@@ -30,8 +30,8 @@
   "submit": {
     "production": {
       "ios": {
-        "ascApiKeyPath": "./credentials/AuthKey_IGE22WY96LJX.p8",
-        "ascApiKeyId": "IGE22WY96LJX",
+        "ascApiKeyPath": "./credentials/AuthKey_X25AAYH8QT.p8",
+        "ascApiKeyId": "X25AAYH8QT",
         "ascApiKeyIssuerId": "905684d2-c99b-4bb1-91dc-98bcf84d2c81"
       },
       "android": {
