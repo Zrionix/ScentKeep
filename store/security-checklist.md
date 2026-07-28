@@ -20,8 +20,35 @@ Last run: 28 July 2026.
 | Client cannot self-grant premium | ✅ | `subscriptions` has a read policy and **no** write policy; B's insert rejected |
 | Billing ledger unreadable by clients | ✅ | RLS on, zero policies = deny-all |
 | Policies use `(select auth.uid())` | ✅ | Avoids per-row re-evaluation (`auth_rls_initplan` advisor) |
-| `SECURITY DEFINER` functions not publicly callable | ✅ | `EXECUTE` revoked from `public`/`anon`/`authenticated` on `handle_new_user` and `touch_updated_at`; advisor now clean |
-| Supabase security advisors clean | ✅ | Only one INFO: `billing_events` RLS-on-no-policy, which is the intended deny-all |
+| Policies scoped `TO authenticated` | ✅ | Explicit role grant rather than relying on `auth.uid()` being NULL for `anon` |
+| `SECURITY DEFINER` functions not publicly callable | ✅ | `EXECUTE` revoked from `public`/`anon`/`authenticated` on `handle_new_user` and `touch_updated_at`; advisor cleared |
+| Leaked-password protection (HaveIBeenPwned) | ✅ | Enabled; applies if a user ever sets a password on the optional email upgrade |
+
+### Advisor findings we accept, and why
+
+The Supabase security advisor is **not** silent, and this file will not pretend
+it is. Two findings remain, both deliberate:
+
+1. **`rls_enabled_no_policy` on `billing_events`** (INFO). RLS on with zero
+   policies is a deny-all in Postgres. Only the service-role webhook touches
+   this table. This is the intended posture, not an oversight.
+
+2. **`auth_allow_anonymous_sign_ins` on all six user tables** (WARN, ×7).
+   Flagged because anonymous users can reach their own rows — which is the
+   entire product. In Supabase an anonymously signed-in user holds the
+   **`authenticated`** role (with `is_anonymous: true` in the JWT), so this
+   warning persists even with policies scoped `TO authenticated`.
+
+   The advisor's suggested remediation is to add
+   `and (select auth.jwt() ->> 'is_anonymous')::boolean is false`, which would
+   lock every anonymous user out of their own collection and require an email to
+   use the app at all. That contradicts the anonymous-first requirement in the
+   brief, so we do not apply it.
+
+   **What actually protects the data is unchanged and proven:** each policy
+   still requires `auth.uid() = user_id`, so an anonymous user reaches their own
+   rows and nobody else's. `scripts/test-rls.js` demonstrates this with two real
+   anonymous users and 18 assertions.
 
 ## Storage
 

@@ -194,8 +194,13 @@ network requests**. **53 passed, 0 failed.**
 - Deleting the auth rows cascaded every dependent row to zero across all five
   tables — the account-deletion path works.
 - Both Edge Functions reject unauthenticated calls (401) and wrong methods (405).
-- Supabase security advisors: clean, apart from one INFO for `billing_events`
-  having RLS on with no policies, which is the intended deny-all.
+- Supabase security advisors: two findings remain and both are deliberate —
+  `billing_events` has RLS on with no policies (a deny-all, by design), and
+  `auth_allow_anonymous_sign_ins` fires on every user table because anonymous
+  users can reach their own rows, which is the product. Applying the advisor's
+  suggested fix would require an email to use the app at all. Reasoning written
+  up in `store/security-checklist.md`; the protection itself
+  (`auth.uid() = user_id`) is unchanged and proven by the RLS test.
 - All four review URLs return 200 publicly, with no SSO wall.
 
 ### Visual
