@@ -7,17 +7,10 @@
 // Host: the ScentKeep marketing site (site/ in this repo, deployed to Vercel).
 // ---------------------------------------------------------------------------
 
-// The live, publicly-reachable site (Vercel project `scentkeep`, SSO protection
-// off so App Review is not met with a login wall).
-//
-// scentkeep.com IS now owned and attached to this Vercel project, with the DNS
-// records in place. It stays commented out until it actually resolves and
-// serves — a fresh .com takes a while for the registry to publish delegation,
-// and shipping a build whose Privacy URL does not resolve is a rejection.
-//
-// To switch: change this constant, then `npm run check:links` must pass.
-// export const SITE_BASE = 'https://scentkeep.com';
-export const SITE_BASE = 'https://scentkeep.vercel.app';
+// The live, publicly-reachable site: Vercel project `scentkeep`, served on the
+// owned domain, with SSO protection off so App Review is not met with a login
+// wall. Verified end to end by `npm run check:links`.
+export const SITE_BASE = 'https://scentkeep.com';
 
 export const LINKS = {
   privacy: `${SITE_BASE}/privacy`,

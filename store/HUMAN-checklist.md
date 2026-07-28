@@ -17,18 +17,23 @@ Connect's web UI lies about state more often than it should.
       **DNS only** — Cloudflare's proxy in front of Vercel breaks certificate
       provisioning.
 
-- [ ] **Wait for DNS, then flip `SITE_BASE`.** A brand-new `.com` takes a while
-      for the registry to publish delegation, so `scentkeep.com` does not
-      resolve yet. Once it does, uncomment the `scentkeep.com` line in
-      `src/lib/links.ts` and confirm with `npm run check:links`. Until then the
-      app points at `scentkeep.vercel.app`, which is live and accepted by
-      App Review — nothing is blocked.
+- [x] ~~Wait for DNS, then flip `SITE_BASE`~~ — **done.** DNS propagated,
+      `https://scentkeep.com/privacy` serves the real page, and `SITE_BASE` now
+      points at the owned domain. Confirmed by `npm run check:links`.
 
-- [ ] **Set up the support mailbox.** The registration includes **free email
-      forwarding**, so `support@scentkeep.com` can forward to any inbox you
-      already read: Cloudflare → scentkeep.com → Email → Email Routing. Tell me
-      when it exists and I'll put it on the site, the privacy policy and the
-      terms, and redeploy.
+- [ ] **Click the Cloudflare verification email.** Email Routing is configured
+      for `scentkeep.com` — all five DNS records (3× MX, DKIM, SPF) are in place
+      and Cloudflare-managed, and `nathan@zrionix.dev` is registered as the
+      destination. It sits at **Pending** until you click the verification link
+      Cloudflare emailed to that address. Cloudflare will not let a rule target
+      an unverified mailbox, and that is a proof-of-ownership check worth
+      respecting rather than routing around.
+
+      Once you've clicked it, tell me and I'll create the
+      `support@scentkeep.com → nathan@zrionix.dev` rule — about ten seconds.
+
+      (`zrionix.dev` is on Proton Mail, not Cloudflare Email Routing, so there
+      is no forward-to-a-forward problem.)
 
 ---
 
@@ -100,27 +105,30 @@ the paid tier), but it means no one can buy anything.
       `credentials/SubscriptionKey_K3778CNYXU.p8` (git-ignored, PEM shape
       validated).
 
-- [ ] **Drop that `.p8` into the RevenueCat form** — 10 seconds, and it is the
-      only step left before purchases work.
+- [x] ~~Attach the In-App Purchase key in RevenueCat~~ — **done, and no file
+      upload was needed after all.**
 
-      The form at *ScentKeep → Apps → New app configuration → App Store* is
-      already filled in for you (app name, bundle id `com.scentkeep.app`,
-      Key ID, Issuer ID). Only the file itself is missing: drag
-      `credentials/SubscriptionKey_K3778CNYXU.p8` onto the drop zone and press
-      **Save changes**.
+      App Store Connect In-App Purchase keys are **team-wide**, not per-app, and
+      RevenueCat already held the team's key (`9Y6X8BL4GM`, used by Drippyy and
+      EmberFree iOS). Selecting it covered ScentKeep too, so the app
+      configuration was created without handling a private key at all — a
+      strictly better outcome than uploading one.
 
-      I could not do this one: the browser tool refuses to upload arbitrary
-      local files, and a private key is exactly the case that guardrail exists
-      for — copying the secret somewhere more permissive to get around it would
-      have been the wrong trade.
+      The `K3778CNYXU` key I generated earlier is now a documented spare, with
+      its `.p8` safely in `credentials/`. Worth keeping: the team key's own
+      `.p8` was never saved anywhere, so this is the only IAP key on this
+      machine that could be re-registered if the other were ever revoked.
 
-      Then send me the generated `appl_…` **public** SDK key and I will put it
-      in the EAS production environment and verify it.
+- [x] ~~Get the `appl_…` SDK key into the build~~ — **done.**
+      `appl_jqcEfGxgCCtbfsdwuOpyuHSkOyb`, in both the local `.env` and the EAS
+      **production** environment (verified with `eas env:list production`).
+      That was the last thing standing between the app and real purchases.
 
-      > ⚠️ RevenueCat currently has an **open incident**: *"Newly created apps
-      > error with 'The key is not valid or is not compatible with the Bundle ID
-      > of your app'."* If the key misbehaves, that is why — check
-      > https://status.revenuecat.com/incidents/mr3l9wqygn3d before debugging.
+      > ⚠️ RevenueCat has an **open incident**: *"Newly created apps error with
+      > 'The key is not valid or is not compatible with the Bundle ID of your
+      > app'."* If the first sandbox purchase misbehaves, check
+      > https://status.revenuecat.com/incidents/mr3l9wqygn3d before debugging
+      > your own code.
 
 - [ ] **Confirm the RevenueCat account email.** The dashboard is showing *"Your
       email address is not yet confirmed"*, which can restrict actions.

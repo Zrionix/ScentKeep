@@ -218,7 +218,7 @@ on the wardrobe layout after reviewing the captures.
 | Supabase | 6 tables, RLS on all, private `bottle-photos` bucket | 3 migrations applied |
 | Supabase | Edge Functions `revenuecat-webhook`, `delete-account` | both ACTIVE |
 | Supabase | Anonymous sign-in enabled | — |
-| Vercel | Site (marketing, privacy, terms, support) | `scentkeep.vercel.app` |
+| Vercel | Site (marketing, privacy, terms, support) | `scentkeep.com` |
 | Cloudflare | Domain `scentkeep.com`, auto-renew, expires 28 Jul 2027 | apex A → Vercel, `www` CNAME, both DNS-only |
 | EAS | Project `@zrionix/scentkeep` | `9e3af423-…` |
 | EAS | Production env vars set (Supabase URL + anon key + PostHog host) | verified via `env:list` |
@@ -242,7 +242,7 @@ Format: `[NEEDS-HUMAN] ScentKeep — <what> — <why> — <blocking?>`
 - `[NEEDS-HUMAN] ScentKeep — Sign in to Apple so EAS can create the iOS distribution certificate and provisioning profile for com.scentkeep.app — signing requires your Apple credentials and 2FA, which I must not handle — BLOCKING`
 - `[NEEDS-HUMAN] ScentKeep — Place the App Store Connect API key at credentials/AuthKey_IGE22WY96LJX.p8 — needed by eas submit; Apple only lets a .p8 be downloaded once, so generate a new key if it is lost — BLOCKING`
 - `[NEEDS-HUMAN] ScentKeep — Create the App Store Connect app record for com.scentkeep.app — the Company Name entered at FIRST creation becomes the public developer name and can NEVER be edited; set it to Zrionix Technology, INC, not a person — BLOCKING`
-- `[NEEDS-HUMAN] ScentKeep — Decide the public support email address — the site and App Review both need a mailbox that a human reads; support@scentkeep.app does not exist yet because the domain is not purchased — BLOCKING`
+- `[NEEDS-HUMAN] ScentKeep — Decide the public support email address — the site and App Review both need a mailbox that a human reads; support@scentkeep.com does not exist yet because the domain is not purchased — BLOCKING`
 
 ### Blocking real purchases (the app runs on stubs without these)
 - `[NEEDS-HUMAN] ScentKeep — Generate an App Store Connect IN-APP PURCHASE key (.p8, Key ID + Issuer ID) so the RevenueCat Apple app configuration can be created — RevenueCat now REQUIRES this key before it will create an App Store app config, and generating it needs your Apple credentials — BLOCKING for monetisation, not for a TestFlight build`
@@ -267,7 +267,7 @@ Format: `[NEEDS-HUMAN] ScentKeep — <what> — <why> — <blocking?>`
 - `[NEEDS-HUMAN] ScentKeep — Set REVENUECAT_WEBHOOK_SECRET as a Supabase Edge Function secret and point the RevenueCat webhook at https://iqpknjohrjieepvzgqoz.supabase.co/functions/v1/revenuecat-webhook — the function currently fails closed and rejects everything, by design — BLOCKING for entitlement mirroring`
 
 ### Non-blocking
-- `[NEEDS-HUMAN] ScentKeep — Approve buying scentkeep.app (~$10/yr, available) — currently the site is on scentkeep.vercel.app, which works fine for review; switching is a one-line change to SITE_BASE — NOT blocking`
+- `[NEEDS-HUMAN] ScentKeep — Approve buying scentkeep.app (~$10/yr, available) — currently the site is on scentkeep.com, which works fine for review; switching is a one-line change to SITE_BASE — NOT blocking`
 - `[NEEDS-HUMAN] ScentKeep — Provide a PostHog project API key — analytics and the paywall A/B variant are stubbed without it, so §11's funnel metrics will not be collected — NOT blocking`
 - `[NEEDS-HUMAN] ScentKeep — Decide on Sentry — if enabled, the App Privacy label MUST gain a Crash Data declaration — NOT blocking`
 - `[NEEDS-HUMAN] ScentKeep — Play service-account JSON at credentials/play-service-account.json for Android submission — NOT blocking for iOS TestFlight`

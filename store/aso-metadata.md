@@ -93,8 +93,8 @@ Unlimited wardrobe and wishlist, your complete diary history, full insights, clo
 
 Premium is available monthly, annually, or as a one-time lifetime purchase. The annual plan includes a 30-day free trial. Subscriptions renew automatically unless cancelled at least 24 hours before the period ends; manage or cancel any time in your device account settings.
 
-Privacy Policy: https://scentkeep.app/privacy
-Terms of Use: https://scentkeep.app/terms
+Privacy Policy: https://scentkeep.com/privacy
+Terms of Use: https://scentkeep.com/terms
 ```
 
 ### Category
@@ -110,9 +110,9 @@ mature themes. Perfume is a consumer product, not a restricted one, so nothing
 here triggers a higher band.
 
 ### Support & marketing URLs
-- Support URL: `https://scentkeep.app/support`
-- Marketing URL: `https://scentkeep.app`
-- Privacy Policy URL: `https://scentkeep.app/privacy`
+- Support URL: `https://scentkeep.com/support`
+- Marketing URL: `https://scentkeep.com`
+- Privacy Policy URL: `https://scentkeep.com/privacy`
 
 ---
 
