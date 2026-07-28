@@ -134,6 +134,9 @@ export interface SyncInput {
   fragrances: Fragrance[];
   sotd: SotdEntry[];
   settings: Settings;
+  /** Rows deleted locally that the cloud may still hold. See the store. */
+  deletedFragranceIds?: string[];
+  deletedSotdIds?: string[];
 }
 
 /**
@@ -142,7 +145,13 @@ export interface SyncInput {
  */
 export async function syncNow(
   input: SyncInput,
-): Promise<SyncResult & { merged?: { fragrances: Fragrance[]; sotd: SotdEntry[] } }> {
+): Promise<
+  SyncResult & {
+    merged?: { fragrances: Fragrance[]; sotd: SotdEntry[] };
+    /** Tombstones the server accepted; the caller clears exactly these. */
+    appliedDeletions?: { fragranceIds: string[]; sotdIds: string[] };
+  }
+> {
   const supabase = getSupabaseClient();
   if (!supabase) return { ok: false, pushed: 0, pulled: 0, skipped: 'not-configured' };
   if (!input.userId) return { ok: false, pushed: 0, pulled: 0, skipped: 'not-signed-in' };
@@ -183,21 +192,51 @@ export async function syncNow(
       { onConflict: 'user_id' },
     );
 
+    // Deletions must be applied to the server BEFORE the pull. Upserts alone
+    // leave a deleted row sitting in the cloud, and the pull then hands it
+    // straight back — the bottle the user deleted reappears on next launch.
+    const deletedFragranceIds = input.deletedFragranceIds ?? [];
+    const deletedSotdIds = input.deletedSotdIds ?? [];
+    const appliedDeletions = { fragranceIds: [] as string[], sotdIds: [] as string[] };
+
+    if (deletedSotdIds.length) {
+      const { error } = await supabase.from('sotd_entries').delete().in('id', deletedSotdIds);
+      if (!error) appliedDeletions.sotdIds = deletedSotdIds;
+    }
+    if (deletedFragranceIds.length) {
+      // Diary rows cascade from the bottle, so this covers both.
+      const { error } = await supabase.from('fragrances').delete().in('id', deletedFragranceIds);
+      if (!error) appliedDeletions.fragranceIds = deletedFragranceIds;
+    }
+
     const [remoteFrags, remoteSotd] = await Promise.all([
       supabase.from('fragrances').select('*'),
       supabase.from('sotd_entries').select('*'),
     ]);
 
+    // Belt and braces: filter the pull against the tombstones too, so a
+    // deletion whose server-side delete failed still doesn't resurrect locally.
+    const deadFragrances = new Set(deletedFragranceIds);
+    const deadSotd = new Set(deletedSotdIds);
+
+    const remoteF = (remoteFrags.data ?? [])
+      .map(fromFragranceRow)
+      .filter((f) => !deadFragrances.has(f.id));
+    const remoteS = (remoteSotd.data ?? [])
+      .map(fromSotdRow)
+      .filter((e) => !deadSotd.has(e.id) && !deadFragrances.has(e.fragranceId));
+
     const merged = {
-      fragrances: mergeByUpdatedAt(input.fragrances, (remoteFrags.data ?? []).map(fromFragranceRow)),
-      sotd: mergeEntries(input.sotd, (remoteSotd.data ?? []).map(fromSotdRow)),
+      fragrances: mergeByUpdatedAt(input.fragrances, remoteF),
+      sotd: mergeEntries(input.sotd, remoteS),
     };
 
     return {
       ok: true,
       pushed: input.fragrances.length + input.sotd.length,
-      pulled: (remoteFrags.data?.length ?? 0) + (remoteSotd.data?.length ?? 0),
+      pulled: remoteF.length + remoteS.length,
       merged,
+      appliedDeletions,
     };
   } catch (e) {
     return { ok: false, pushed: 0, pulled: 0, error: e instanceof Error ? e.message : 'Sync failed.' };

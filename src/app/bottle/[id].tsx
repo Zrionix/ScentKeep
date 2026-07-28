@@ -169,8 +169,10 @@ export default function BottleDetailScreen() {
             </Text>
           </Card>
           <Card flat style={styles.miniStat}>
-            <Text variant="overline" tone="tertiary">
-              Cost / wear
+            {/* "Cost / wear" wrapped to two lines at this width and pushed the
+                third card taller than the other two. */}
+            <Text variant="overline" tone="tertiary" numberOfLines={1}>
+              Per wear
             </Text>
             <Text variant="small" style={styles.miniStatValue}>
               {stats?.costPerWear !== null && stats?.costPerWear !== undefined
@@ -323,8 +325,8 @@ const styles = StyleSheet.create({
   heroMonogram: { fontSize: 84, lineHeight: 100, fontWeight: '300', opacity: 0.8 },
   titleBlock: { marginBottom: space.lg, gap: 3 },
   primaryAction: { marginTop: space.xl },
-  statRow: { flexDirection: 'row', gap: space.sm, marginTop: space.lg },
-  miniStat: { flex: 1, minHeight: 74 },
+  statRow: { flexDirection: 'row', gap: space.sm, marginTop: space.lg, alignItems: 'stretch' },
+  miniStat: { flex: 1, minHeight: 76, justifyContent: 'flex-start' },
   miniStatValue: { marginTop: 4 },
   noteValue: { marginTop: 4 },
   noteDivider: { marginVertical: space.md },

@@ -7,6 +7,8 @@ const reset = () =>
     fragrances: [],
     sotd: [],
     isPremium: false,
+    deletedFragranceIds: [],
+    deletedSotdIds: [],
     dirtyAt: null,
   });
 
@@ -278,6 +280,80 @@ describe('replaceAll / clearAll', () => {
     expect(s.fragrances).toEqual([]);
     expect(s.sotd).toEqual([]);
     expect(s.settings.currency).toBe('USD');
+  });
+});
+
+describe('deletion tombstones', () => {
+  // Without tombstones, sync pushes upserts, pulls everything back, and the
+  // bottle the user deleted returns on the next launch — the server still had
+  // it, and the merge reads it as a row the device was missing.
+  it('records a tombstone when a bottle is deleted', () => {
+    const f = add('Doomed');
+    if (!f.ok) throw new Error('setup failed');
+    useStore.getState().deleteFragrance(f.value.id);
+    expect(useStore.getState().deletedFragranceIds).toEqual([f.value.id]);
+  });
+
+  it('records a tombstone when a diary entry is deleted', () => {
+    const f = add('Bottle');
+    if (!f.ok) throw new Error('setup failed');
+    const e = useStore.getState().logSotd({ fragranceId: f.value.id });
+    if (!e.ok) throw new Error('setup failed');
+    useStore.getState().deleteSotd(e.value.id);
+    expect(useStore.getState().deletedSotdIds).toEqual([e.value.id]);
+  });
+
+  it('does not duplicate a tombstone', () => {
+    const f = add('Doomed');
+    if (!f.ok) throw new Error('setup failed');
+    useStore.getState().deleteFragrance(f.value.id);
+    useStore.getState().deleteFragrance(f.value.id); // already gone
+    expect(useStore.getState().deletedFragranceIds).toHaveLength(1);
+  });
+
+  it('clears only the tombstones the server actually accepted', () => {
+    const a = add('A');
+    const b = add('B');
+    if (!a.ok || !b.ok) throw new Error('setup failed');
+    useStore.getState().deleteFragrance(a.value.id);
+    useStore.getState().deleteFragrance(b.value.id);
+
+    // Sync applied only the first deletion; the second must stay pending so the
+    // next attempt retries it instead of silently resurrecting the row.
+    useStore.getState().clearTombstones([a.value.id], []);
+    expect(useStore.getState().deletedFragranceIds).toEqual([b.value.id]);
+  });
+
+  it('keeps a tombstone created while a sync was in flight', () => {
+    const a = add('A');
+    if (!a.ok) throw new Error('setup failed');
+    useStore.getState().deleteFragrance(a.value.id);
+
+    const b = add('B');
+    if (!b.ok) throw new Error('setup failed');
+    useStore.getState().deleteFragrance(b.value.id);
+
+    // The sync that started before B was deleted reports only A.
+    useStore.getState().clearTombstones([a.value.id], []);
+    expect(useStore.getState().deletedFragranceIds).toContain(b.value.id);
+  });
+
+  it('bounds the tombstone list so it cannot grow without limit', () => {
+    useStore.setState({ isPremium: true });
+    for (let i = 0; i < 520; i += 1) {
+      const f = add(`Bottle ${i}`);
+      if (f.ok) useStore.getState().deleteFragrance(f.value.id);
+    }
+    expect(useStore.getState().deletedFragranceIds.length).toBeLessThanOrEqual(500);
+  });
+
+  it('drops tombstones entirely on delete-my-data', () => {
+    const f = add('Doomed');
+    if (!f.ok) throw new Error('setup failed');
+    useStore.getState().deleteFragrance(f.value.id);
+    useStore.getState().clearAll();
+    expect(useStore.getState().deletedFragranceIds).toEqual([]);
+    expect(useStore.getState().deletedSotdIds).toEqual([]);
   });
 });
 

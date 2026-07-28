@@ -5,15 +5,9 @@
 // ONLY thing that writes `subscriptions`, using the service-role key; the table
 // has no client write policy, so a tampered app cannot grant itself premium.
 //
-// Two properties matter more than anything else here:
-//   1. AUTHENTICATION. The shared secret is compared in constant time. Without
-//      it, anyone who learns the URL could mark any user as subscribed.
-//   2. IDEMPOTENCY. Every delivery is recorded under RevenueCat's own event id
-//      as a primary key. RevenueCat retries on any non-2xx, so a replayed
-//      delivery must be a no-op rather than a second state change.
-//
-// Deployed with verify_jwt = false: the caller is RevenueCat's server, which has
-// no Supabase JWT. The shared secret IS the authentication.
+// verify_jwt = false: the caller is RevenueCat's server, which has no Supabase
+// JWT. The shared secret in the Authorization header IS the authentication, and
+// it is compared in constant time.
 // ---------------------------------------------------------------------------
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
@@ -22,20 +16,17 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const WEBHOOK_SECRET = Deno.env.get('REVENUECAT_WEBHOOK_SECRET') ?? '';
 
-/** Length-independent constant-time compare, so a wrong secret leaks no timing. */
+/** Constant-time compare that does not short-circuit on differing lengths. */
 function safeEqual(a: string, b: string): boolean {
   const enc = new TextEncoder();
   const ab = enc.encode(a);
   const bb = enc.encode(b);
-  // Compare a fixed-size digest rather than the raw bytes so differing lengths
-  // do not short-circuit and reveal the secret's length.
   let diff = ab.length ^ bb.length;
   const len = Math.max(ab.length, bb.length);
   for (let i = 0; i < len; i += 1) diff |= (ab[i] ?? 0) ^ (bb[i] ?? 0);
   return diff === 0;
 }
 
-/** Maps a RevenueCat event type to the status we store. */
 function statusFor(type: string, expirationMs: number | null): string {
   switch (type) {
     case 'INITIAL_PURCHASE':
@@ -67,7 +58,7 @@ Deno.serve(async (req: Request) => {
     return new Response('Method not allowed', { status: 405 });
   }
 
-  // Fail CLOSED: an unset secret must reject everything rather than accept
+  // Fail CLOSED: an unset secret rejects everything rather than accepting
   // everything, which is what a naive `if (secret && ...)` check would do.
   const auth = req.headers.get('Authorization') ?? '';
   if (!WEBHOOK_SECRET || !safeEqual(auth, WEBHOOK_SECRET)) {
@@ -97,22 +88,63 @@ Deno.serve(async (req: Request) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  // Idempotency gate. The primary key is RevenueCat's event id, so a replayed
-  // delivery collides here and returns 200 without touching entitlement state.
+  // --- idempotency -----------------------------------------------------------
+  // The ledger is keyed on RevenueCat's own event id, so a replayed delivery
+  // collides here.
+  //
+  // A collision alone is NOT proof the event was fully handled: the previous
+  // attempt may have written the ledger and then failed on the subscription
+  // upsert, returning 5xx. Treating every collision as "already done" would drop
+  // that entitlement change permanently. So on a collision we check whether the
+  // subscription row actually carries this event id, and only short-circuit if
+  // it does.
   const { error: ledgerError } = await admin
     .from('billing_events')
     .insert({ event_id: eventId, user_id: appUserId, event_type: event.type, payload });
 
   if (ledgerError) {
-    if (ledgerError.code === '23505') {
+    if (ledgerError.code !== '23505') {
+      // A real storage failure: 5xx so RevenueCat retries rather than dropping
+      // an entitlement change on the floor.
+      return new Response(JSON.stringify({ error: 'ledger write failed' }), { status: 500 });
+    }
+
+    const { data: existing } = await admin
+      .from('subscriptions')
+      .select('last_event_id')
+      .eq('user_id', appUserId)
+      .maybeSingle();
+
+    if (existing?.last_event_id === eventId) {
       return new Response(JSON.stringify({ ok: true, duplicate: true }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       });
     }
-    // A real storage failure: return 5xx so RevenueCat retries rather than
-    // dropping an entitlement change on the floor.
-    return new Response(JSON.stringify({ error: 'ledger write failed' }), { status: 500 });
+    // Ledger row exists but the entitlement was never applied — fall through and
+    // finish the job. The upsert below is idempotent.
+  }
+
+  // --- ordering guard --------------------------------------------------------
+  // RevenueCat does not guarantee ordering, so a retried EXPIRATION can arrive
+  // after a newer RENEWAL. Applying it would revoke an entitlement the user has
+  // already renewed.
+  const eventAtMs: number | null = event.event_timestamp_ms ?? null;
+  const eventAt = eventAtMs ? new Date(eventAtMs).toISOString() : null;
+
+  if (eventAt) {
+    const { data: current } = await admin
+      .from('subscriptions')
+      .select('last_event_at')
+      .eq('user_id', appUserId)
+      .maybeSingle();
+
+    if (current?.last_event_at && current.last_event_at > eventAt) {
+      return new Response(JSON.stringify({ ok: true, stale: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
   }
 
   const expirationMs: number | null = event.expiration_at_ms ?? null;
@@ -128,6 +160,7 @@ Deno.serve(async (req: Request) => {
       period_type: event.period_type ?? null,
       expires_at: expirationMs ? new Date(expirationMs).toISOString() : null,
       last_event_id: eventId,
+      last_event_at: eventAt,
       updated_at: new Date().toISOString(),
     },
     { onConflict: 'user_id' },

@@ -107,12 +107,21 @@ async function run(): Promise<BootstrapResult> {
         fragrances: s.fragrances,
         sotd: s.sotd,
         settings: s.settings,
+        deletedFragranceIds: s.deletedFragranceIds,
+        deletedSotdIds: s.deletedSotdIds,
       });
       if (result.ok && result.merged) {
         useStore.getState().replaceAll({
           fragrances: result.merged.fragrances,
           sotd: result.merged.sotd,
         });
+        // Only the tombstones the server actually accepted are dropped; the
+        // rest stay pending for the next attempt.
+        if (result.appliedDeletions) {
+          useStore
+            .getState()
+            .clearTombstones(result.appliedDeletions.fragranceIds, result.appliedDeletions.sotdIds);
+        }
       }
     }
   } catch {

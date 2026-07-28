@@ -43,6 +43,17 @@ export interface AppState {
   sotd: SotdEntry[];
   settings: Settings;
 
+  /**
+   * Ids of rows deleted locally that the cloud may still hold — tombstones.
+   *
+   * Without these, sync pushes upserts, then pulls everything back, and a
+   * bottle the user deleted reappears on the next launch: the server still had
+   * it and the merge treats it as a row the device was missing. Tombstones are
+   * cleared once the deletion has been applied to the server.
+   */
+  deletedFragranceIds: string[];
+  deletedSotdIds: string[];
+
   /** Bumped on every local mutation so the sync layer knows work is pending. */
   dirtyAt: string | null;
 
@@ -72,6 +83,9 @@ export interface AppState {
   updateSettings(patch: Partial<Settings>): void;
   completeOnboarding(answers: { families: string[]; sizeBand: string | null }): void;
 
+  /** Called after sync has applied the deletions server-side. */
+  clearTombstones(fragranceIds: string[], sotdIds: string[]): void;
+
   /** Replace everything — used by cloud restore and by the demo seeder. */
   replaceAll(data: { fragrances: Fragrance[]; sotd: SotdEntry[]; settings?: Partial<Settings> }): void;
   /** Wipe local data (delete-my-data / sign-out). */
@@ -79,6 +93,16 @@ export interface AppState {
 }
 
 const nowIso = () => DateTime.utc().toISO()!;
+
+/** Tombstones are bounded: an id that has been pending for 500 deletions has
+ *  long since been applied or abandoned, and the list is persisted to disk. */
+const MAX_TOMBSTONES = 500;
+
+function rememberDeleted(existing: string[], id: string): string[] {
+  if (existing.includes(id)) return existing;
+  const next = [...existing, id];
+  return next.length > MAX_TOMBSTONES ? next.slice(next.length - MAX_TOMBSTONES) : next;
+}
 
 export const useStore = create<AppState>()(
   persist(
@@ -89,6 +113,8 @@ export const useStore = create<AppState>()(
       fragrances: [],
       sotd: [],
       settings: { ...DEFAULT_SETTINGS },
+      deletedFragranceIds: [],
+      deletedSotdIds: [],
       dirtyAt: null,
 
       setHydrated: (v) => set({ hydrated: v }),
@@ -144,13 +170,16 @@ export const useStore = create<AppState>()(
       },
 
       deleteFragrance(id) {
-        const { fragrances, sotd } = get();
+        const { fragrances, sotd, deletedFragranceIds } = get();
         if (!fragrances.some((f) => f.id === id)) return { ok: false, reason: 'not-found' };
         set({
           fragrances: fragrances.filter((f) => f.id !== id),
           // Diary entries for a removed bottle go with it, matching the ON
           // DELETE CASCADE in Postgres so local and remote agree after a sync.
           sotd: sotd.filter((e) => e.fragranceId !== id),
+          // The bottle's diary rows cascade server-side, so only the bottle
+          // itself needs a tombstone.
+          deletedFragranceIds: rememberDeleted(deletedFragranceIds, id),
           dirtyAt: nowIso(),
         });
         return { ok: true };
@@ -228,10 +257,25 @@ export const useStore = create<AppState>()(
       },
 
       deleteSotd(id) {
-        const { sotd } = get();
+        const { sotd, deletedSotdIds } = get();
         if (!sotd.some((e) => e.id === id)) return { ok: false, reason: 'not-found' };
-        set({ sotd: sotd.filter((e) => e.id !== id), dirtyAt: nowIso() });
+        set({
+          sotd: sotd.filter((e) => e.id !== id),
+          deletedSotdIds: rememberDeleted(deletedSotdIds, id),
+          dirtyAt: nowIso(),
+        });
         return { ok: true };
+      },
+
+      clearTombstones(fragranceIds, sotdIds) {
+        const done = new Set(fragranceIds);
+        const doneSotd = new Set(sotdIds);
+        set({
+          // Only drop the ids the sync actually applied — anything deleted while
+          // that request was in flight must survive for the next round.
+          deletedFragranceIds: get().deletedFragranceIds.filter((id) => !done.has(id)),
+          deletedSotdIds: get().deletedSotdIds.filter((id) => !doneSotd.has(id)),
+        });
       },
 
       updateSettings(patch) {
@@ -264,6 +308,10 @@ export const useStore = create<AppState>()(
           fragrances: [],
           sotd: [],
           settings: { ...DEFAULT_SETTINGS },
+          // Delete-my-data purges the cloud outright, so there is nothing left
+          // for a tombstone to point at.
+          deletedFragranceIds: [],
+          deletedSotdIds: [],
           dirtyAt: nowIso(),
         });
       },
@@ -280,6 +328,10 @@ export const useStore = create<AppState>()(
         settings: s.settings,
         isPremium: s.isPremium,
         userId: s.userId,
+        // Tombstones MUST persist: a deletion made offline has to survive the
+        // restart that finally gets a chance to sync it, or the row resurrects.
+        deletedFragranceIds: s.deletedFragranceIds,
+        deletedSotdIds: s.deletedSotdIds,
         dirtyAt: s.dirtyAt,
       }),
       onRehydrateStorage: () => (state) => {
