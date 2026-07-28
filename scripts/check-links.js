@@ -14,11 +14,22 @@ const path = require('path');
 
 const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'lib', 'links.ts'), 'utf8');
 
-const base = /SITE_BASE\s*=\s*'([^']+)'/.exec(src)?.[1];
+// Read the ACTIVE constant only. A naive match on the whole file picks up a
+// commented-out alternative — which is exactly what happened when a not-yet-live
+// domain was parked above the real one, and this script then dutifully reported
+// the working site as broken.
+const base = src
+  .split('\n')
+  .filter((line) => !line.trim().startsWith('//'))
+  .map((line) => /SITE_BASE\s*=\s*'([^']+)'/.exec(line)?.[1])
+  .find(Boolean);
+
 if (!base) {
-  console.error('Could not read SITE_BASE from src/lib/links.ts');
+  console.error('Could not read an active SITE_BASE from src/lib/links.ts');
   process.exit(1);
 }
+
+console.log(`  Checking ${base}\n`);
 
 const TARGETS = [
   { name: 'marketing site', url: base },

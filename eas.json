@@ -32,7 +32,8 @@
       "ios": {
         "ascApiKeyPath": "./credentials/AuthKey_X25AAYH8QT.p8",
         "ascApiKeyId": "X25AAYH8QT",
-        "ascApiKeyIssuerId": "905684d2-c99b-4bb1-91dc-98bcf84d2c81"
+        "ascApiKeyIssuerId": "905684d2-c99b-4bb1-91dc-98bcf84d2c81",
+        "ascAppId": "6795710068"
       },
       "android": {
         "serviceAccountKeyPath": "./credentials/play-service-account.json",

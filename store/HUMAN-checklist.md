@@ -10,16 +10,25 @@ Connect's web UI lies about state more often than it should.
 
 ## A. Before anything else (5 minutes, decides the rest)
 
-- [ ] **Pick the public support email.** The site and App Review both need a
-      mailbox a human reads. Options: buy `scentkeep.app` (~$10/yr, available)
-      and use `support@scentkeep.app`, or use an address you already own. Tell
-      me which and I'll update `site/support.html`, `site/privacy.html`,
-      `site/terms.html` and redeploy.
+- [x] ~~Decide on the domain~~ — **bought.** `scentkeep.com`, $10.46/yr on
+      Cloudflare Registrar (at cost, renews at the same price), auto-renew on,
+      expires 28 Jul 2027. Attached to the Vercel project, with an apex A record
+      to `76.76.21.21` and `www` CNAME to `cname.vercel-dns.com`, both set to
+      **DNS only** — Cloudflare's proxy in front of Vercel breaks certificate
+      provisioning.
 
-- [ ] **Decide on the domain.** `scentkeep.app` ($9.99/yr) and `scentkeep.com`
-      ($11.25/yr) are both free right now. Not required — the live site at
-      `https://scentkeep.vercel.app` satisfies App Review as-is — but the name
-      is unclaimed and cheap to hold.
+- [ ] **Wait for DNS, then flip `SITE_BASE`.** A brand-new `.com` takes a while
+      for the registry to publish delegation, so `scentkeep.com` does not
+      resolve yet. Once it does, uncomment the `scentkeep.com` line in
+      `src/lib/links.ts` and confirm with `npm run check:links`. Until then the
+      app points at `scentkeep.vercel.app`, which is live and accepted by
+      App Review — nothing is blocked.
+
+- [ ] **Set up the support mailbox.** The registration includes **free email
+      forwarding**, so `support@scentkeep.com` can forward to any inbox you
+      already read: Cloudflare → scentkeep.com → Email → Email Routing. Tell me
+      when it exists and I'll put it on the site, the privacy policy and the
+      terms, and redeploy.
 
 ---
 
@@ -42,17 +51,24 @@ Connect's web UI lies about state more often than it should.
       whose `.p8` was never saved, and Apple only allows one download — so this
       reuses the team's existing Admin key rather than burning a new one.
 
-- [ ] **Create the App Store Connect app record.**
-      > ⚠️ **The trap:** the "Company Name" you type at *first* record creation
-      > becomes the app's public developer name and **cannot be edited later**.
-      > Set it to **Zrionix Technology, INC**, not a person's name. Fixing it
-      > afterwards means a support request to Apple, and an Individual account
-      > can't show a company name at all.
+- [x] ~~Create the App Store Connect app record~~ — **done and verified by API.**
 
-      - Bundle ID: `com.scentkeep.app`
-      - Name / subtitle / keywords: copy from `store/aso-metadata.md`
-      - Primary category Lifestyle, secondary Utilities
-      - Age rating **4+**
+      | | |
+      |---|---|
+      | Apple app id | **6795710068** |
+      | Name | ScentKeep: Fragrance Wardrobe |
+      | Bundle ID | `com.scentkeep.app` (registered as an explicit App ID under team DRPPNG8QV4) |
+      | SKU | `SCENTKEEP-IOS-001` |
+      | Primary language | English (U.S.) |
+
+      The developer-name trap did not apply: the account is already an
+      **Organization** (Zrionix Technology, Inc), so that is what the App Store
+      will show. `eas.json` now carries `ascAppId`, so `eas submit` knows where
+      to send the build.
+
+      Still to set on the record itself: subtitle, keywords, description,
+      category (Lifestyle / Utilities) and age rating 4+ — all drafted in
+      `store/aso-metadata.md`.
 
 - [ ] **Then build and submit:**
       ```bash

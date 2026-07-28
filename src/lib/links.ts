@@ -10,9 +10,13 @@
 // The live, publicly-reachable site (Vercel project `scentkeep`, SSO protection
 // off so App Review is not met with a login wall).
 //
-// `scentkeep.app` is available but NOT purchased — buying it is an open
-// [HUMAN] item. When it is bought and attached to this Vercel project, changing
-// this one constant is the entire migration.
+// scentkeep.com IS now owned and attached to this Vercel project, with the DNS
+// records in place. It stays commented out until it actually resolves and
+// serves — a fresh .com takes a while for the registry to publish delegation,
+// and shipping a build whose Privacy URL does not resolve is a rejection.
+//
+// To switch: change this constant, then `npm run check:links` must pass.
+// export const SITE_BASE = 'https://scentkeep.com';
 export const SITE_BASE = 'https://scentkeep.vercel.app';
 
 export const LINKS = {

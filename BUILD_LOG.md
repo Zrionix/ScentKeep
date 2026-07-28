@@ -219,11 +219,18 @@ on the wardrobe layout after reviewing the captures.
 | Supabase | Edge Functions `revenuecat-webhook`, `delete-account` | both ACTIVE |
 | Supabase | Anonymous sign-in enabled | — |
 | Vercel | Site (marketing, privacy, terms, support) | `scentkeep.vercel.app` |
+| Cloudflare | Domain `scentkeep.com`, auto-renew, expires 28 Jul 2027 | apex A → Vercel, `www` CNAME, both DNS-only |
 | EAS | Project `@zrionix/scentkeep` | `9e3af423-…` |
 | EAS | Production env vars set (Supabase URL + anon key + PostHog host) | verified via `env:list` |
+| RevenueCat | Project `ScentKeep`, entitlement `premium`, Monthly/Yearly/Lifetime offering | `0770dfee` |
+| App Store Connect | App record, verified by API | id `6795710068` |
+| Apple Developer | Explicit App ID `com.scentkeep.app` | team `DRPPNG8QV4` |
+| Apple | In-App Purchase key (for RevenueCat) | `K3778CNYXU` |
+| Apple | App Store Connect API key (for `eas submit`) | `X25AAYH8QT`, verified |
 
-**Cost added:** Supabase project $10/month (approved). Vercel is on the free
-tier. Nothing else recurring.
+**Cost added:** Supabase project $10/month (approved) and `scentkeep.com`
+$10.46/year (approved). Vercel and Cloudflare are otherwise on free tiers.
+Nothing else recurring.
 
 ---
 
