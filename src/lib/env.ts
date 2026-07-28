@@ -24,6 +24,20 @@ function clean(v: string | undefined): string | undefined {
   return t;
 }
 
+/**
+ * RevenueCat's Test Store key routes purchases to a SIMULATED store: no real
+ * StoreKit sheet, no real money. That is exactly what you want in development
+ * and a disaster in a shipped build — the app would look like it was selling
+ * subscriptions while charging nobody.
+ *
+ * So the test key is honoured in dev and IGNORED in release. If a release build
+ * somehow ships with only a test key, purchases fall back to the stub, which
+ * already refuses to grant premium. Both failure modes fail closed.
+ */
+function devOnly(v: string | undefined): string | undefined {
+  return __DEV__ ? v : undefined;
+}
+
 export const env = {
   supabaseUrl: clean(process.env.EXPO_PUBLIC_SUPABASE_URL),
   supabaseAnonKey: clean(process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY),
@@ -31,7 +45,7 @@ export const env = {
   posthogHost: clean(process.env.EXPO_PUBLIC_POSTHOG_HOST) ?? 'https://us.i.posthog.com',
   revenueCatIos: clean(process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY),
   revenueCatAndroid: clean(process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY),
-  revenueCatTest: clean(process.env.EXPO_PUBLIC_REVENUECAT_TEST_KEY),
+  revenueCatTest: devOnly(clean(process.env.EXPO_PUBLIC_REVENUECAT_TEST_KEY)),
   sentryDsn: clean(process.env.EXPO_PUBLIC_SENTRY_DSN),
 } as const;
 

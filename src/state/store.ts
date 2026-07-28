@@ -7,10 +7,12 @@ import { alreadyLogged } from '@/domain/sotd';
 import { ownedBottles, wishlistBottles } from '@/domain/stats';
 import {
   DEFAULT_SETTINGS,
+  withDefaults,
   type Fragrance,
   type FragranceDraft,
   type Settings,
   type SotdEntry,
+  type WishlistKind,
 } from '@/domain/types';
 import { todayIso } from '@/lib/dates';
 import { newId } from '@/lib/id';
@@ -66,7 +68,10 @@ export interface AppState {
   updateFragrance(id: string, patch: Partial<FragranceDraft>): MutationResult<Fragrance>;
   deleteFragrance(id: string): MutationResult;
   moveToWardrobe(id: string): MutationResult<Fragrance>;
-  moveToWishlist(id: string): MutationResult<Fragrance>;
+  moveToWishlist(id: string, kind?: WishlistKind): MutationResult<Fragrance>;
+
+  /** Records a MEASURED level, which becomes the new depletion baseline. */
+  setBottleLevel(id: string, remainingMl: number | null): MutationResult<Fragrance>;
 
   logSotd(input: {
     fragranceId: string;
@@ -203,7 +208,7 @@ export const useStore = create<AppState>()(
         return { ok: true, value: updated };
       },
 
-      moveToWishlist(id) {
+      moveToWishlist(id, kind = 'buy') {
         const { fragrances, isPremium } = get();
         const existing = fragrances.find((f) => f.id === id);
         if (!existing) return { ok: false, reason: 'not-found' };
@@ -211,10 +216,37 @@ export const useStore = create<AppState>()(
         if (!canAddToWishlist(wishlistBottles(fragrances).length, isPremium)) {
           return { ok: false, reason: 'cap-wishlist' };
         }
-        const updated = { ...existing, inWishlist: true, updatedAt: nowIso() };
+        const updated = { ...existing, inWishlist: true, wishlistKind: kind, updatedAt: nowIso() };
         set({
           fragrances: fragrances.map((f) => (f.id === id ? updated : f)),
           dirtyAt: updated.updatedAt,
+        });
+        return { ok: true, value: updated };
+      },
+
+      setBottleLevel(id, remainingMl) {
+        const { fragrances } = get();
+        const existing = fragrances.find((f) => f.id === id);
+        if (!existing) return { ok: false, reason: 'not-found' };
+
+        const stamp = nowIso();
+        // The level and its timestamp are written together or cleared together —
+        // a level without a measurement time cannot be depleted from correctly,
+        // and the database enforces the same pairing.
+        const clamped =
+          remainingMl === null
+            ? null
+            : Math.max(0, Math.min(remainingMl, existing.sizeMl ?? remainingMl));
+
+        const updated: Fragrance = {
+          ...existing,
+          remainingMl: clamped,
+          remainingMlAt: clamped === null ? null : stamp,
+          updatedAt: stamp,
+        };
+        set({
+          fragrances: fragrances.map((f) => (f.id === id ? updated : f)),
+          dirtyAt: stamp,
         });
         return { ok: true, value: updated };
       },
@@ -335,7 +367,13 @@ export const useStore = create<AppState>()(
         dirtyAt: s.dirtyAt,
       }),
       onRehydrateStorage: () => (state) => {
-        state?.setHydrated(true);
+        if (!state) return;
+        // Backfill fields added after this user's data was written. Without
+        // this, a collection saved by an earlier build rehydrates with
+        // `undefined` for `type`, `spraysPerWear` and friends, and every screen
+        // that reads them renders wrong or crashes.
+        state.fragrances = state.fragrances.map((f) => withDefaults(f));
+        state.setHydrated(true);
       },
     },
   ),
@@ -345,5 +383,7 @@ export const useStore = create<AppState>()(
 
 export const selectOwned = (s: AppState) => ownedBottles(s.fragrances);
 export const selectWishlist = (s: AppState) => wishlistBottles(s.fragrances);
+export const selectWishlistOf = (kind: WishlistKind) => (s: AppState) =>
+  wishlistBottles(s.fragrances).filter((f) => f.wishlistKind === kind);
 export const selectById = (id: string) => (s: AppState) => s.fragrances.find((f) => f.id === id);
 export const selectNeedsOnboarding = (s: AppState) => s.settings.onboardedAt === null;

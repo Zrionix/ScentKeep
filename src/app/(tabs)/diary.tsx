@@ -9,7 +9,7 @@ import { currentStreak, daysLogged, groupByDay, hiddenHistoryCount, longestStrea
 import { analytics } from '@/lib/analytics';
 import { friendlyDate, recentDates } from '@/lib/dates';
 import { useStore } from '@/state/store';
-import { colorForFamily, radius, space } from '@/theme';
+import { colorForFamily, space } from '@/theme';
 import { useTheme } from '@/theme/ThemeProvider';
 
 export default function DiaryScreen() {

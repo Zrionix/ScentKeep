@@ -61,8 +61,8 @@ describe('paywallCopy', () => {
 
 describe('annualSavingPercent', () => {
   it('computes the saving against twelve months', () => {
-    // $3.99 x 12 = $47.88 vs $19.99 -> 58%
-    expect(annualSavingPercent(3.99, 19.99)).toBe(58);
+    // $4.99 x 12 = $59.88 vs $24.99 -> 58%
+    expect(annualSavingPercent(4.99, 24.99)).toBe(58);
   });
 
   it('returns null when either price is missing', () => {

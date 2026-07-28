@@ -7,6 +7,7 @@ import { PageHeader, Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
 import { PREMIUM_FEATURES } from '@/domain/entitlements';
 import { analytics } from '@/lib/analytics';
+import { goBack } from '@/lib/nav';
 import { AUTO_RENEW_TERMS, LINKS } from '@/lib/links';
 import { purchases, type Package } from '@/lib/purchases';
 import { annualSavingPercent, paywallCopy, resolveVariant } from '@/lib/remoteConfig';
@@ -70,7 +71,7 @@ export default function PaywallScreen() {
 
   const dismiss = () => {
     analytics().capture('paywall_dismissed', { source, variant });
-    router.back();
+    goBack(router);
   };
 
   const buy = async () => {
@@ -92,7 +93,7 @@ export default function PaywallScreen() {
           variant,
           had_trial: Boolean(selected.freeTrialDays),
         });
-        router.back();
+        goBack(router);
         return;
       }
       // A cancelled purchase is the common case and is NOT an error state —
@@ -118,7 +119,7 @@ export default function PaywallScreen() {
       analytics().capture('restore_completed', { restored: ok });
       if (ok) {
         setPremium(true);
-        router.back();
+        goBack(router);
       } else {
         setError('No previous purchase was found on this store account.');
       }

@@ -5,6 +5,7 @@ import {
   FREE_LIMITS,
   historyCutoffDays,
   isFeatureUnlocked,
+  PREMIUM_FEATURES,
   wardrobeCap,
   wishlistCap,
 } from './entitlements';
@@ -80,6 +81,8 @@ describe('feature gating', () => {
       'unlimited-wishlist',
       'full-history',
       'advanced-stats',
+      'bottle-levels',
+      'insurance-export',
       'cloud-sync',
       'themes',
       'export',
@@ -87,6 +90,17 @@ describe('feature gating', () => {
     for (const f of features) {
       expect(isFeatureUnlocked(f, false)).toBe(false);
       expect(isFeatureUnlocked(f, true)).toBe(true);
+    }
+  });
+
+  it('every advertised premium feature is one the code actually gates', () => {
+    // Guideline 3.1.2: do not advertise a feature you do not really gate. This
+    // fails if someone adds a bullet to the paywall without a matching gate.
+    for (const f of PREMIUM_FEATURES) {
+      expect(isFeatureUnlocked(f.key, false)).toBe(false);
+      expect(isFeatureUnlocked(f.key, true)).toBe(true);
+      expect(f.title.length).toBeGreaterThan(0);
+      expect(f.detail.length).toBeGreaterThan(0);
     }
   });
 

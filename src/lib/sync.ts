@@ -1,4 +1,4 @@
-import type { Fragrance, Settings, SotdEntry } from '@/domain/types';
+import { withDefaults, type Fragrance, type Settings, type SotdEntry } from '@/domain/types';
 import type { FragranceRow, SotdRow } from './backend/database.types';
 import { getSupabaseClient } from './supabaseClient';
 
@@ -45,13 +45,23 @@ function toFragranceRow(f: Fragrance, userId: string): FragranceRow {
     rating: f.rating,
     in_wishlist: f.inWishlist,
     notes: f.notes,
+    type: f.type,
+    concentration: f.concentration,
+    house_tier: f.houseTier,
+    sprays_per_wear: f.spraysPerWear,
+    remaining_ml: f.remainingMl,
+    remaining_ml_at: f.remainingMlAt,
+    wishlist_kind: f.wishlistKind,
     created_at: f.createdAt,
     updated_at: f.updatedAt,
   };
 }
 
 export function fromFragranceRow(r: FragranceRow): Fragrance {
-  return {
+  // Routed through `withDefaults` so a row written by an older client — or one
+  // fetched before a column existed — arrives complete rather than with
+  // `undefined` where the app expects a value.
+  return withDefaults({
     id: r.id,
     name: r.name,
     brand: r.brand,
@@ -71,9 +81,16 @@ export function fromFragranceRow(r: FragranceRow): Fragrance {
     rating: r.rating as Fragrance['rating'],
     inWishlist: r.in_wishlist,
     notes: r.notes,
+    type: (r.type ?? 'bottle') as Fragrance['type'],
+    concentration: r.concentration as Fragrance['concentration'],
+    houseTier: r.house_tier as Fragrance['houseTier'],
+    spraysPerWear: r.sprays_per_wear,
+    remainingMl: r.remaining_ml,
+    remainingMlAt: r.remaining_ml_at,
+    wishlistKind: (r.wishlist_kind ?? 'buy') as Fragrance['wishlistKind'],
     createdAt: r.created_at,
     updatedAt: r.updated_at,
-  };
+  });
 }
 
 function toSotdRow(e: SotdEntry, userId: string): SotdRow {

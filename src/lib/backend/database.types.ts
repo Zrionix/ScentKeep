@@ -38,6 +38,13 @@ export interface Database {
           rating: number;
           in_wishlist: boolean;
           notes: string | null;
+          type: string;
+          concentration: string | null;
+          house_tier: string | null;
+          sprays_per_wear: number;
+          remaining_ml: number | null;
+          remaining_ml_at: string | null;
+          wishlist_kind: string;
           created_at: string;
           updated_at: string;
         };
@@ -62,6 +69,13 @@ export interface Database {
           rating?: number;
           in_wishlist?: boolean;
           notes?: string | null;
+          type?: string;
+          concentration?: string | null;
+          house_tier?: string | null;
+          sprays_per_wear?: number;
+          remaining_ml?: number | null;
+          remaining_ml_at?: string | null;
+          wishlist_kind?: string;
           created_at?: string;
           updated_at?: string;
         };

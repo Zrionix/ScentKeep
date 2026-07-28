@@ -143,6 +143,7 @@ export function validateFragrance(draft: {
   brand: string;
   sizeMl: number | null;
   price: number | null;
+  spraysPerWear?: number;
 }): Record<string, string> {
   const errors: Record<string, string> = {};
 
@@ -160,6 +161,16 @@ export function validateFragrance(draft: {
   if (draft.price !== null) {
     if (!Number.isFinite(draft.price) || draft.price < 0) errors.price = 'Price cannot be negative.';
     else if (draft.price > 1000000) errors.price = 'Price is out of range.';
+  }
+
+  // Mirrors the database CHECK. A zero here would divide the depletion maths
+  // by nothing, and a huge value would empty a bottle in a week.
+  if (draft.spraysPerWear !== undefined) {
+    if (!Number.isInteger(draft.spraysPerWear) || draft.spraysPerWear < 1) {
+      errors.spraysPerWear = 'Use at least 1 spray.';
+    } else if (draft.spraysPerWear > 20) {
+      errors.spraysPerWear = 'That is a lot — 20 sprays is the max.';
+    }
   }
 
   return errors;

@@ -68,6 +68,26 @@ async function typeInto(page, testId, text) {
   await page.type(sel(testId), text, { delay: 12 });
 }
 
+/**
+ * Types into a field that already has a value.
+ *
+ * Plain `typeInto` APPENDS, which turned a pre-filled "100" into "10040".
+ * Clearing has to be keyboard-only: a triple-click + Backspace emptied the
+ * field but cost it focus on the re-render, so everything typed afterwards went
+ * nowhere and the value came back null.
+ */
+async function replaceIn(page, testId, text) {
+  const ok = await waitFor(page, testId);
+  if (!ok) throw new Error(`input not found: ${testId}`);
+  await page.click(sel(testId));
+  const existing = await page.$eval(sel(testId), (el) => el.value ?? '');
+  await page.keyboard.press('End');
+  for (let i = 0; i < existing.length + 2; i += 1) {
+    await page.keyboard.press('Backspace');
+  }
+  await page.type(sel(testId), text, { delay: 25 });
+}
+
 async function bodyText(page) {
   return page.evaluate(() => document.body.innerText);
 }
@@ -171,6 +191,9 @@ async function main() {
 
     await typeInto(page, 'field-name', 'Aventus');
     await typeInto(page, 'field-brand', 'Creed');
+    // Size matters: without it there is nothing to compute a bottle level from,
+    // and step 10 has nothing to assert on.
+    await typeInto(page, 'field-size', '100');
     await typeInto(page, 'field-price', '445');
     await tap(page, 'family-Chypre');
     await tap(page, 'rating-overall-5');
@@ -181,7 +204,9 @@ async function main() {
     check('the bottle was stored', (afterAdd?.fragrances ?? []).length === 1);
     check('its name was stored', afterAdd?.fragrances?.[0]?.name === 'Aventus');
     check('its price was parsed as a number', afterAdd?.fragrances?.[0]?.price === 445);
+    check('its size was parsed as a number', afterAdd?.fragrances?.[0]?.sizeMl === 100);
     check('its rating was stored', afterAdd?.fragrances?.[0]?.rating === 5);
+    check('it defaulted to a full bottle', afterAdd?.fragrances?.[0]?.type === 'bottle');
     check('the wardrobe now shows it', (await bodyText(page)).includes('Aventus'));
 
     // ------------------------------------------------------------ log SOTD
@@ -307,19 +332,117 @@ async function main() {
     check('a free user sees rotation locked', await present(page, 'stat-rotation-locked'));
     check('a free user does not see the unlocked rotation', !(await present(page, 'stat-rotation')));
 
-    // ----------------------------------------------------------- settings
-    console.log('\n[10] Settings');
-    await page.goto(`${BASE}/settings`, { waitUntil: 'networkidle2' });
+    // ------------------------------------------------ bottle level tracking
+    console.log('\n[10] Bottle levels (the premium hook)');
+    // Back to premium for this block.
+    await seedStore(page, (state) => ({ ...state, isPremium: true }));
+    await page.evaluate((k) => window.localStorage.setItem(k, 'true'), STUB_PREMIUM_KEY);
+
+    const levelId = (await readStore(page)).fragrances[0].id;
+    await page.goto(`${BASE}/bottle/${levelId}`, { waitUntil: 'networkidle2' });
+    await settle(page, 1800);
+
+    check('a premium user sees the bottle level', await present(page, 'bottle-level'));
+    const levelText = await bodyText(page);
+    check('the level is shown as a percentage', /\d+%/.test(levelText));
+    check(
+      'the figure is labelled as an estimate before it is measured',
+      /Estimated level/i.test(levelText),
+    );
+
+    await tap(page, 'adjust-level');
+    check('the adjust control opens', await present(page, 'level-adjust'));
+    // The field is pre-filled with the current level, so this must REPLACE.
+    await replaceIn(page, 'level-input', '40');
+    await tap(page, 'level-save');
+    await settle(page, 1200);
+
+    const afterLevel = await readStore(page);
+    const adjusted = afterLevel.fragrances.find((f) => f.id === levelId);
+    check(
+      'the measured level was stored',
+      adjusted?.remainingMl === 40,
+      `got ${JSON.stringify(adjusted?.remainingMl)}`,
+    );
+    check('the measurement was timestamped', Boolean(adjusted?.remainingMlAt));
+
+    await page.goto(`${BASE}/bottle/${levelId}`, { waitUntil: 'networkidle2' });
     await settle(page, 1500);
+    check(
+      'it now reads as measured rather than estimated',
+      /Measured level/i.test(await bodyText(page)),
+    );
+
+    // Free users must see it locked instead.
+    await seedStore(page, (state) => ({ ...state, isPremium: false }));
+    await page.evaluate((k) => window.localStorage.removeItem(k), STUB_PREMIUM_KEY);
+    await page.goto(`${BASE}/bottle/${levelId}`, { waitUntil: 'networkidle2' });
+    await settle(page, 1800);
+    check('a free user sees the level locked', await present(page, 'bottle-level-locked'));
+    check('a free user does not see the real level', !(await present(page, 'bottle-level')));
+
+    // ---------------------------------------------- collector fields + lists
+    console.log('\n[11] Collector fields and the split wishlist');
+    // Back to premium: the previous block left the tier on free, and the
+    // wardrobe is past the free cap — so a save here would be correctly refused
+    // and this block would be testing the cap instead of the new fields.
+    await seedStore(page, (state) => ({ ...state, isPremium: true }));
+    await page.evaluate((k) => window.localStorage.setItem(k, 'true'), STUB_PREMIUM_KEY);
+    await page.goto(`${BASE}/bottle/new`, { waitUntil: 'networkidle2' });
+    await settle(page, 1500);
+    check('the form offers decant and sample types', await present(page, 'type-decant'));
+    check('the form offers concentration', await present(page, 'concentration-EDP'));
+    check('the form offers a house tier', await present(page, 'tier-Niche'));
+    check('the form offers sprays per wear', await present(page, 'field-sprays'));
+
+    await typeInto(page, 'field-name', 'Test Decant');
+    await tap(page, 'type-decant');
+    await tap(page, 'concentration-EDP');
+    await tap(page, 'tier-Niche');
+    await tap(page, 'bottle-save');
+    await settle(page, 1200);
+
+    const withDecant = await readStore(page);
+    const decant = withDecant.fragrances.find((f) => f.name === 'Test Decant');
+    check('the decant was stored with its type', decant?.type === 'decant');
+    check('its concentration was stored', decant?.concentration === 'EDP');
+    check('its house tier was stored', decant?.houseTier === 'Niche');
+
+    await page.goto(BASE, { waitUntil: 'networkidle2' });
+    await settle(page, 1800);
+    await tap(page, 'shelf-wishlist');
+    check('the wishlist splits into to-buy and to-try', await present(page, 'wishkind-sniff'));
+    await tap(page, 'wishkind-sniff');
+    await settle(page, 800);
+    check('switching lists keeps the wishlist on screen', await present(page, 'shelf-wishlist'));
+
+    // ----------------------------------------------------------- settings
+    console.log('\n[12] Settings');
+    // Drop to free FIRST so the gated controls can be checked in their locked
+    // state; the premium pass follows below.
+    await seedStore(page, (state) => ({ ...state, isPremium: false }));
+    await page.evaluate((k) => window.localStorage.removeItem(k), STUB_PREMIUM_KEY);
+    await page.goto(`${BASE}/settings`, { waitUntil: 'networkidle2' });
+    await settle(page, 1800);
     check('export control exists', await present(page, 'settings-export'));
     check('delete-my-data control exists', await present(page, 'settings-delete'));
     check('restore purchases control exists', await present(page, 'settings-restore'));
     check('privacy policy is linked', await present(page, 'link-privacy'));
     check('terms are linked', await present(page, 'link-terms'));
     check('support is linked', await present(page, 'link-support'));
+    check(
+      'the insurance record is gated behind Premium for a free user',
+      await present(page, 'settings-insurance-locked'),
+    );
+
+    await seedStore(page, (state) => ({ ...state, isPremium: true }));
+    await page.evaluate((k) => window.localStorage.setItem(k, 'true'), STUB_PREMIUM_KEY);
+    await page.goto(`${BASE}/settings`, { waitUntil: 'networkidle2' });
+    await settle(page, 1800);
+    check('a premium user gets the insurance record', await present(page, 'settings-insurance'));
 
     // ------------------------------------------------------------ console
-    console.log('\n[11] Runtime errors');
+    console.log('\n[13] Runtime errors');
     // Expo's dev bundle logs benign warnings on web; only genuine failures count.
     const real = consoleErrors.filter(
       (e) =>

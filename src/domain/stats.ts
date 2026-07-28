@@ -63,9 +63,35 @@ export function collectionValue(fragrances: Fragrance[], fallbackCurrency = 'USD
   };
 }
 
-/** Total millilitres of juice on the shelf — a collector vanity metric. */
+/** Total millilitres of juice on the shelf — a collector vanity metric.
+ *  This is CAPACITY bought, not what is left; see `totalRemainingMl`. */
 export function totalVolumeMl(fragrances: Fragrance[]): number {
   return round2(ownedBottles(fragrances).reduce((sum, f) => sum + (f.sizeMl ?? 0), 0));
+}
+
+/** Owned items grouped by container type. Collectors want the decant count
+ *  separately — "40 fragrances" reads very differently from "8 bottles and
+ *  32 decants". */
+export function typeBreakdown(fragrances: Fragrance[]): Breakdown[] {
+  return tally(ownedBottles(fragrances).map((f) => f.type));
+}
+
+/** Owned bottles by concentration (EDT / EDP / Parfum …). */
+export function concentrationBreakdown(fragrances: Fragrance[]): Breakdown[] {
+  return tally(
+    ownedBottles(fragrances)
+      .filter((f) => Boolean(f.concentration))
+      .map((f) => f.concentration as string),
+  );
+}
+
+/** Owned bottles by how the house is positioned (designer / niche / indie …). */
+export function houseTierBreakdown(fragrances: Fragrance[]): Breakdown[] {
+  return tally(
+    ownedBottles(fragrances)
+      .filter((f) => Boolean(f.houseTier))
+      .map((f) => f.houseTier as string),
+  );
 }
 
 export interface WearCount {
@@ -256,6 +282,9 @@ export interface StatsSummary {
   rotation: Rotation;
   families: Breakdown[];
   seasons: Breakdown[];
+  types: Breakdown[];
+  concentrations: Breakdown[];
+  houseTiers: Breakdown[];
   wearsPerWeek: number;
   /** Best value-for-money bottle: lowest cost-per-wear, min 3 wears. */
   bestValue: WearCount | null;
@@ -281,6 +310,9 @@ export function summarise(
     rotation: rotation(fragrances, entries, ROTATION_WINDOW_DAYS, now),
     families: familyBreakdown(fragrances),
     seasons: seasonBreakdown(fragrances),
+    types: typeBreakdown(fragrances),
+    concentrations: concentrationBreakdown(fragrances),
+    houseTiers: houseTierBreakdown(fragrances),
     wearsPerWeek: averageWearsPerWeek(entries, now),
     bestValue: withCpw.length
       ? withCpw.reduce((best, w) => (w.costPerWear! < best.costPerWear! ? w : best))

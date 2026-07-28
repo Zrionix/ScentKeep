@@ -1,15 +1,16 @@
 import { useRouter } from 'expo-router';
 import React, { useMemo } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Card, StatCard } from '@/components/ui/Card';
 import { EmptyState, PageHeader, Screen, SectionHeader } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
+import { runningLow, totalRemainingMl } from '@/domain/bottleLevel';
 import { isFeatureUnlocked } from '@/domain/entitlements';
 import { NEGLECTED_AFTER_DAYS, summarise, type Breakdown } from '@/domain/stats';
 import { analytics } from '@/lib/analytics';
 import { relativeSpan } from '@/lib/dates';
 import { useStore } from '@/state/store';
-import { colorForFamily, radius, space } from '@/theme';
+import { colorForFamily, space } from '@/theme';
 import { useTheme } from '@/theme/ThemeProvider';
 
 export default function StatsScreen() {
@@ -23,6 +24,8 @@ export default function StatsScreen() {
 
   const s = useMemo(() => summarise(fragrances, sotd, currency), [fragrances, sotd, currency]);
   const advanced = isFeatureUnlocked('advanced-stats', isPremium);
+  const low = useMemo(() => runningLow(fragrances, sotd), [fragrances, sotd]);
+  const leftMl = useMemo(() => totalRemainingMl(fragrances, sotd), [fragrances, sotd]);
 
   React.useEffect(() => {
     analytics().capture('stats_viewed', { collection_size: s.bottles, is_premium: isPremium });
@@ -93,9 +96,11 @@ export default function StatsScreen() {
         />
         <StatCard
           testID="stat-volume"
-          label="On the shelf"
-          value={s.volumeMl > 0 ? `${s.volumeMl.toLocaleString()} ml` : '—'}
-          caption={s.volumeMl > 0 ? 'Total juice' : 'Add bottle sizes'}
+          label="Juice left"
+          value={s.volumeMl > 0 ? `${Math.round(leftMl).toLocaleString()} ml` : '—'}
+          // Capacity bought vs what is actually left are very different numbers
+          // after a year of wearing it; the caption makes clear which this is.
+          caption={s.volumeMl > 0 ? `of ${s.volumeMl.toLocaleString()} ml bought` : 'Add bottle sizes'}
         />
       </View>
 
@@ -156,6 +161,60 @@ export default function StatsScreen() {
           </Text>
         </Card>
       ) : null}
+
+      <SectionHeader title="Running low" />
+      {isFeatureUnlocked('bottle-levels', isPremium) ? (
+        low.length === 0 ? (
+          <Card flat testID="stat-low-empty">
+            <Text variant="small" tone="tertiary">
+              Nothing is running low. Every bottle with a size recorded still has plenty in it.
+            </Text>
+          </Card>
+        ) : (
+          <Card padded={false} testID="stat-low">
+            {low.slice(0, 6).map((l, i) => (
+              <Pressable
+                key={l.fragrance.id}
+                testID={`low-${l.fragrance.id}`}
+                onPress={() => router.push({ pathname: '/bottle/[id]', params: { id: l.fragrance.id } })}
+                accessibilityRole="button"
+                accessibilityLabel={`${l.fragrance.name}, about ${Math.round(l.level.fraction * 100)} percent left`}
+                style={[
+                  styles.row,
+                  i > 0 ? { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.lineSoft } : null,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.swatch,
+                    { backgroundColor: l.level.isEmpty ? colors.danger : colors.warning },
+                  ]}
+                />
+                <View style={styles.fill}>
+                  <Text variant="subtitle" numberOfLines={1}>
+                    {l.fragrance.name}
+                  </Text>
+                  <Text variant="caption" tone="tertiary">
+                    ~{l.level.remainingMl} ml left
+                    {l.projection?.daysLeft !== null && l.projection
+                      ? ` · ${l.projection.label.toLowerCase()}`
+                      : ''}
+                  </Text>
+                </View>
+                <Text variant="subtitle" tone={l.level.isEmpty ? 'danger' : 'accent'}>
+                  {Math.round(l.level.fraction * 100)}%
+                </Text>
+              </Pressable>
+            ))}
+          </Card>
+        )
+      ) : (
+        <LockedCard
+          testID="stat-low-locked"
+          title="Know before a bottle runs dry"
+          onPress={() => upsell('stats-running-low')}
+        />
+      )}
 
       <SectionHeader title="Rotation" />
       {advanced ? (
@@ -251,6 +310,29 @@ export default function StatsScreen() {
           onPress={() => upsell('stats-seasons')}
         />
       )}
+
+      {/* Free too: these are simple counts of what the user typed in, and
+          they're what makes the app feel like it understands collecting. */}
+      {s.types.length > 1 ? (
+        <>
+          <SectionHeader title="Bottles, decants & samples" />
+          <BreakdownBars data={s.types} testID="stat-types" />
+        </>
+      ) : null}
+
+      {s.concentrations.length > 0 ? (
+        <>
+          <SectionHeader title="By concentration" />
+          <BreakdownBars data={s.concentrations} testID="stat-concentrations" />
+        </>
+      ) : null}
+
+      {s.houseTiers.length > 0 ? (
+        <>
+          <SectionHeader title="Designer vs niche" />
+          <BreakdownBars data={s.houseTiers} testID="stat-tiers" />
+        </>
+      ) : null}
     </Screen>
   );
 }

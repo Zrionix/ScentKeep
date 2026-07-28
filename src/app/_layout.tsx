@@ -24,7 +24,6 @@ export default function RootLayout() {
   // headline silently falls back to the system sans and the whole editorial
   // look is gone. Only the one weight the type scale uses is bundled.
   const [fontsLoaded, fontError] = useFonts({
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     CormorantGaramond_600SemiBold: require('@expo-google-fonts/cormorant-garamond/600SemiBold/CormorantGaramond_600SemiBold.ttf'),
   });
 

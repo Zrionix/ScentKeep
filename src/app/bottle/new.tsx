@@ -8,9 +8,20 @@ import { Rating } from '@/components/ui/Rating';
 import { Divider, PageHeader, Screen, SectionHeader } from '@/components/ui/Screen';
 import { Tag, TagRow } from '@/components/ui/Tag';
 import { Text } from '@/components/ui/Text';
-import { emptyDraft, type FragranceDraft } from '@/domain/types';
+import {
+  CONCENTRATIONS,
+  DEFAULT_SPRAYS_PER_WEAR,
+  emptyDraft,
+  HOUSE_TIERS,
+  ITEM_TYPE_LABELS,
+  ITEM_TYPES,
+  WISHLIST_KIND_LABELS,
+  WISHLIST_KINDS,
+  type FragranceDraft,
+} from '@/domain/types';
 import { validateFragrance } from '@/domain/wardrobe';
 import { analytics } from '@/lib/analytics';
+import { goBack } from '@/lib/nav';
 import { pickErrorMessage, pickFromLibrary, takePhoto } from '@/lib/photos';
 import { useStore } from '@/state/store';
 import { OCCASIONS, radius, SCENT_FAMILIES, SEASONS, space } from '@/theme';
@@ -19,7 +30,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 export default function BottleFormScreen() {
   const router = useRouter();
   const { colors } = useTheme();
-  const params = useLocalSearchParams<{ id?: string; wishlist?: string }>();
+  const params = useLocalSearchParams<{ id?: string; wishlist?: string; kind?: string }>();
 
   const fragrances = useStore((s) => s.fragrances);
   const addFragrance = useStore((s) => s.addFragrance);
@@ -33,7 +44,10 @@ export default function BottleFormScreen() {
       const { id: _id, createdAt: _c, updatedAt: _u, ...rest } = editing;
       return rest;
     }
-    return emptyDraft({ inWishlist: params.wishlist === '1' });
+    return emptyDraft({
+      inWishlist: params.wishlist === '1',
+      wishlistKind: params.kind === 'sniff' ? 'sniff' : 'buy',
+    });
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -72,6 +86,7 @@ export default function BottleFormScreen() {
       brand: draft.brand,
       sizeMl: draft.sizeMl,
       price: draft.price,
+      spraysPerWear: draft.spraysPerWear,
     });
     setErrors(found);
     if (Object.keys(found).length > 0) return;
@@ -79,7 +94,7 @@ export default function BottleFormScreen() {
     if (isEdit && editing) {
       updateFragrance(editing.id, draft);
       analytics().capture('bottle_edited', { in_wishlist: draft.inWishlist });
-      router.back();
+      goBack(router);
       return;
     }
 
@@ -102,7 +117,7 @@ export default function BottleFormScreen() {
       has_price: draft.price !== null,
       collection_size: collectionSize + 1,
     });
-    router.back();
+    goBack(router);
   };
 
   return (
@@ -202,6 +217,52 @@ export default function BottleFormScreen() {
         maxLength={500}
       />
 
+      <SectionHeader title="What it is" />
+      <Text variant="overline" tone="tertiary" style={styles.facetLabel}>
+        Type
+      </Text>
+      <TagRow>
+        {ITEM_TYPES.map((t) => (
+          <Tag
+            key={t}
+            label={ITEM_TYPE_LABELS[t]}
+            selected={draft.type === t}
+            testID={`type-${t}`}
+            onPress={() => set('type', t)}
+          />
+        ))}
+      </TagRow>
+
+      <Text variant="overline" tone="tertiary" style={styles.facetLabel}>
+        Concentration
+      </Text>
+      <TagRow>
+        {CONCENTRATIONS.map((c) => (
+          <Tag
+            key={c}
+            label={c}
+            selected={draft.concentration === c}
+            testID={`concentration-${c}`}
+            onPress={() => set('concentration', draft.concentration === c ? null : c)}
+          />
+        ))}
+      </TagRow>
+
+      <Text variant="overline" tone="tertiary" style={styles.facetLabel}>
+        House
+      </Text>
+      <TagRow>
+        {HOUSE_TIERS.map((h) => (
+          <Tag
+            key={h}
+            label={h}
+            selected={draft.houseTier === h}
+            testID={`tier-${h}`}
+            onPress={() => set('houseTier', draft.houseTier === h ? null : h)}
+          />
+        ))}
+      </TagRow>
+
       <SectionHeader title="The bottle" />
       <View style={styles.pair}>
         <View style={styles.fill}>
@@ -227,6 +288,35 @@ export default function BottleFormScreen() {
           />
         </View>
       </View>
+
+      {draft.type !== 'sample' ? (
+        <NumberField
+          label="Sprays per wear"
+          testID="field-sprays"
+          value={draft.spraysPerWear}
+          onChangeNumber={(v) => set('spraysPerWear', v ?? DEFAULT_SPRAYS_PER_WEAR)}
+          error={errors.spraysPerWear}
+          placeholder="2"
+          hint="Used to work out how much is left. Most people use 2–4."
+        />
+      ) : null}
+
+      {draft.inWishlist ? (
+        <>
+          <SectionHeader title="Which list" />
+          <TagRow>
+            {WISHLIST_KINDS.map((k) => (
+              <Tag
+                key={k}
+                label={WISHLIST_KIND_LABELS[k]}
+                selected={draft.wishlistKind === k}
+                testID={`wishlist-kind-${k}`}
+                onPress={() => set('wishlistKind', k)}
+              />
+            ))}
+          </TagRow>
+        </>
+      ) : null}
 
       <SectionHeader title="When you wear it" />
       <Text variant="overline" tone="tertiary" style={styles.facetLabel}>
@@ -299,7 +389,7 @@ export default function BottleFormScreen() {
         fullWidth
         style={styles.save}
       />
-      <Button label="Cancel" variant="ghost" onPress={() => router.back()} style={styles.cancel} />
+      <Button label="Cancel" variant="ghost" onPress={() => goBack(router)} style={styles.cancel} />
     </Screen>
   );
 }

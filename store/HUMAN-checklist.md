@@ -70,17 +70,37 @@ Without these the app runs the purchases **stub**, which refuses to grant
 premium in a release build. That's deliberate (a missing key must never hand out
 the paid tier), but it means no one can buy anything.
 
-- [ ] **Create a RevenueCat project** for ScentKeep and send me the **public**
-      SDK keys (`appl_…` and `goog_…`). The `sk_` key in the tokens file is
-      scoped to EmberFree and is a *secret* key — not the one the app uses.
+- [x] ~~Create a RevenueCat project~~ — **done.** Project `ScentKeep`
+      (id `0770dfee`), entitlement id **`premium`** (matches the code), default
+      offering Monthly / Yearly / Lifetime. The Test Store key is wired into the
+      local `.env` for dev testing and is deliberately kept out of the EAS
+      production environment.
+
+- [ ] **Generate an App Store Connect In-App Purchase key** — this is the actual
+      blocker. RevenueCat will not create an Apple app configuration without it,
+      so the `appl_…` SDK key cannot exist yet.
+
+      App Store Connect → Users and Access → Integrations → **In-App Purchase**
+      → generate a key → download the `.p8` (once only) and note the Key ID and
+      Issuer ID. Add it in RevenueCat under
+      *ScentKeep → Apps → New app configuration → App Store*, with App Bundle ID
+      `com.scentkeep.app`. Then send me the generated `appl_…` public SDK key.
+
+      > ⚠️ RevenueCat currently has an **open incident**: *"Newly created apps
+      > error with 'The key is not valid or is not compatible with the Bundle ID
+      > of your app'."* If the key misbehaves, that is why — check
+      > https://status.revenuecat.com/incidents/mr3l9wqygn3d before debugging.
+
+- [ ] **Confirm the RevenueCat account email.** The dashboard is showing *"Your
+      email address is not yet confirmed"*, which can restrict actions.
 
 - [ ] **Create the three products in App Store Connect**, all in **one
       subscription group**:
       | Product | Type | Price | Offer |
       |---|---|---|---|
-      | `scentkeep_premium_monthly` | Auto-renewing | $3.99 / month | — |
-      | `scentkeep_premium_annual` | Auto-renewing | $19.99 / year | 30-day free trial |
-      | `scentkeep_lifetime` | Non-consumable | $39.99 | — |
+      | `scentkeep_premium_monthly` | Auto-renewing | $4.99 / month | — |
+      | `scentkeep_premium_annual` | Auto-renewing | $24.99 / year | 30-day free trial |
+      | `scentkeep_lifetime` | Non-consumable | $59.99 | — |
 
       > ⚠️ **Set subscription prices in the UI, not the API.**
       > `POST /v1/subscriptionPrices` silently sets a **US-only** price: the

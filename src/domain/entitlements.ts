@@ -16,8 +16,12 @@ export const ENTITLEMENT = 'premium';
 export const FREE_LIMITS = {
   /** Bottles on the shelf. A serious collector passes this in a sitting. */
   wardrobe: 12,
-  /** Wishlist slots — enough to try the feature, not enough to plan with. */
-  wishlist: 3,
+  /**
+   * Wishlist slots, counted across BOTH lists (to-buy and to-try). Five rather
+   * than three because splitting one list into two would otherwise have made
+   * the free tier meaner without adding anything.
+   */
+  wishlist: 5,
   /** How far back the free diary reads. Logging itself is never capped. */
   sotdHistoryDays: 30,
 } as const;
@@ -27,21 +31,34 @@ export type GatedFeature =
   | 'unlimited-wishlist'
   | 'full-history'
   | 'advanced-stats'
+  | 'bottle-levels'
+  | 'insurance-export'
   | 'cloud-sync'
   | 'themes'
   | 'export';
 
-/** Features Premium unlocks, in the order the paywall lists them. */
+/** Features Premium unlocks, in the order the paywall lists them.
+ *  Strongest-first: the two nobody else offers lead. */
 export const PREMIUM_FEATURES: { key: GatedFeature; title: string; detail: string }[] = [
+  {
+    key: 'bottle-levels',
+    title: 'Know what’s left in every bottle',
+    detail: 'Live levels from your own wear history, and a nudge before one runs dry.',
+  },
   {
     key: 'unlimited-wardrobe',
     title: 'Unlimited wardrobe',
-    detail: `Log every bottle you own — past ${FREE_LIMITS.wardrobe}.`,
+    detail: `Bottles, decants and samples — every one of them, past ${FREE_LIMITS.wardrobe}.`,
   },
   {
     key: 'advanced-stats',
     title: 'Full collection insights',
-    detail: 'Rotation, neglected bottles, family and season breakdowns.',
+    detail: 'Rotation, neglected bottles, cost per wear, family and season breakdowns.',
+  },
+  {
+    key: 'insurance-export',
+    title: 'Insurance-ready record',
+    detail: 'An itemised export of your collection with prices, dates and photos.',
   },
   {
     key: 'full-history',
@@ -51,7 +68,7 @@ export const PREMIUM_FEATURES: { key: GatedFeature; title: string; detail: strin
   {
     key: 'unlimited-wishlist',
     title: 'Unlimited wishlist',
-    detail: 'Track every bottle you are hunting, not just three.',
+    detail: 'Everything you are hunting and everything you mean to try.',
   },
   {
     key: 'cloud-sync',

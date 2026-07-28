@@ -3,15 +3,21 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useMemo } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
+import { BottleLevelBar } from '@/components/BottleLevelBar';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { NumberField } from '@/components/ui/Field';
 import { Rating } from '@/components/ui/Rating';
 import { Divider, EmptyState, Screen, SectionHeader } from '@/components/ui/Screen';
 import { Tag, TagRow } from '@/components/ui/Tag';
 import { Text } from '@/components/ui/Text';
+import { bottleLevel, projectRunOut } from '@/domain/bottleLevel';
+import { isFeatureUnlocked } from '@/domain/entitlements';
 import { alreadyLogged } from '@/domain/sotd';
 import { wearCounts } from '@/domain/stats';
+import { ITEM_TYPE_LABELS } from '@/domain/types';
 import { analytics } from '@/lib/analytics';
+import { goBack } from '@/lib/nav';
 import { friendlyDate, relativeSpan, todayIso } from '@/lib/dates';
 import { useStore } from '@/state/store';
 import { colorForFamily, radius, space } from '@/theme';
@@ -28,6 +34,7 @@ export default function BottleDetailScreen() {
   const deleteFragrance = useStore((s) => s.deleteFragrance);
   const moveToWardrobe = useStore((s) => s.moveToWardrobe);
   const moveToWishlist = useStore((s) => s.moveToWishlist);
+  const setBottleLevel = useStore((s) => s.setBottleLevel);
 
   const fragrance = fragrances.find((f) => f.id === id);
 
@@ -40,6 +47,17 @@ export default function BottleDetailScreen() {
     () => sotd.filter((e) => e.fragranceId === id).sort((a, b) => b.date.localeCompare(a.date)),
     [sotd, id],
   );
+
+  const level = useMemo(() => (fragrance ? bottleLevel(fragrance, sotd) : null), [fragrance, sotd]);
+  const projection = useMemo(
+    () => (fragrance ? projectRunOut(fragrance, sotd) : null),
+    [fragrance, sotd],
+  );
+
+  // An inline editor rather than Alert.prompt, which exists only on iOS and
+  // would have left Android users unable to correct a level at all.
+  const [adjusting, setAdjusting] = React.useState(false);
+  const [draftMl, setDraftMl] = React.useState<number | null>(null);
 
   if (!fragrance) {
     return (
@@ -70,7 +88,7 @@ export default function BottleDetailScreen() {
           onPress: () => {
             deleteFragrance(fragrance.id);
             analytics().capture('bottle_deleted', { in_wishlist: fragrance.inWishlist });
-            router.back();
+            goBack(router);
           },
         },
       ],
@@ -123,6 +141,9 @@ export default function BottleDetailScreen() {
 
       <TagRow>
         {fragrance.family ? <Tag label={fragrance.family} family /> : null}
+        {fragrance.concentration ? <Tag label={fragrance.concentration} /> : null}
+        {fragrance.type !== 'bottle' ? <Tag label={ITEM_TYPE_LABELS[fragrance.type]} /> : null}
+        {fragrance.houseTier ? <Tag label={fragrance.houseTier} /> : null}
         {fragrance.sizeMl ? <Tag label={`${fragrance.sizeMl} ml`} /> : null}
         {fragrance.price !== null ? (
           <Tag label={`${fragrance.currency} ${fragrance.price.toFixed(2)}`} />
@@ -181,6 +202,77 @@ export default function BottleDetailScreen() {
             </Text>
           </Card>
         </View>
+      ) : null}
+
+      {level ? (
+        <>
+          <SectionHeader title="What's left" />
+          {isFeatureUnlocked('bottle-levels', isPremium) ? (
+            <Card testID="bottle-level">
+              <BottleLevelBar
+                level={level}
+                projection={projection}
+                sizeMl={fragrance.sizeMl!}
+                spraysPerWear={fragrance.spraysPerWear}
+                onAdjust={() => {
+                  setDraftMl(level.remainingMl);
+                  setAdjusting((v) => !v);
+                }}
+              />
+
+              {adjusting ? (
+                <View style={styles.adjustBlock} testID="level-adjust">
+                  <NumberField
+                    label="Millilitres left"
+                    testID="level-input"
+                    value={draftMl}
+                    onChangeNumber={setDraftMl}
+                    hint={`Out of ${fragrance.sizeMl} ml. Wears are counted from here on.`}
+                  />
+                  <View style={styles.adjustActions}>
+                    <Button
+                      testID="level-save"
+                      label="Save level"
+                      onPress={() => {
+                        setBottleLevel(fragrance.id, draftMl);
+                        setAdjusting(false);
+                      }}
+                      style={styles.fill}
+                    />
+                    <Button
+                      testID="level-reset"
+                      label="Back to estimate"
+                      variant="secondary"
+                      onPress={() => {
+                        setBottleLevel(fragrance.id, null);
+                        setAdjusting(false);
+                      }}
+                      style={styles.fill}
+                    />
+                  </View>
+                </View>
+              ) : null}
+            </Card>
+          ) : (
+            <Card
+              testID="bottle-level-locked"
+              flat
+              onPress={() => {
+                analytics().capture('free_cap_hit', { cap: 'bottle-levels' });
+                router.push({ pathname: '/paywall', params: { source: 'bottle-level' } });
+              }}
+              accessibilityLabel="Bottle level tracking is a Premium feature. Tap to see Premium."
+              style={[styles.lockedCard, { borderColor: colors.accentLine, backgroundColor: colors.accentBg }]}
+            >
+              <Text variant="overline" tone="accent">
+                Premium
+              </Text>
+              <Text variant="small" tone="secondary" style={styles.lockedBody}>
+                See how much is left in this bottle, and get a nudge before it runs dry.
+              </Text>
+            </Card>
+          )}
+        </>
       ) : null}
 
       {fragrance.notesTop || fragrance.notesHeart || fragrance.notesBase ? (
@@ -307,7 +399,7 @@ export default function BottleDetailScreen() {
         onPress={confirmDelete}
       />
 
-      <Button label="Back" variant="ghost" fullWidth style={styles.secondaryAction} onPress={() => router.back()} />
+      <Button label="Back" variant="ghost" fullWidth style={styles.secondaryAction} onPress={() => goBack(router)} />
     </Screen>
   );
 }
@@ -341,4 +433,9 @@ const styles = StyleSheet.create({
   },
   actionsDivider: { marginTop: space.xxl },
   secondaryAction: { marginTop: space.sm },
+  adjustBlock: { marginTop: space.xl },
+  adjustActions: { flexDirection: 'row', gap: space.sm },
+  fill: { flex: 1 },
+  lockedCard: { borderWidth: 1 },
+  lockedBody: { marginTop: 4 },
 });

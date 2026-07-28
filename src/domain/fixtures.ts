@@ -18,6 +18,11 @@ export function makeFragrance(overrides: Partial<Fragrance> & { id: string }): F
   } as Fragrance;
 }
 
+/** Convenience for the many tests that only care about a bottle's size. */
+export function makeBottle(id: string, sizeMl: number, over: Partial<Fragrance> = {}): Fragrance {
+  return makeFragrance({ id, sizeMl, ...over });
+}
+
 export function makeEntry(overrides: Partial<SotdEntry> & { id: string; fragranceId: string; date: string }): SotdEntry {
   return {
     occasion: null,

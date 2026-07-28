@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/Card';
 import { PageHeader, Screen, SectionHeader } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
 import { FREE_LIMITS } from '@/domain/entitlements';
+import { buildInsuranceReport, disclaimer, insuranceFilename, toCsv } from '@/domain/insurance';
 import { analytics } from '@/lib/analytics';
 import { deleteAccount } from '@/lib/auth';
 import { buildExport, exportFilename, serialiseExport } from '@/lib/dataRights';
@@ -87,6 +88,37 @@ export default function SettingsScreen() {
       analytics().capture('data_exported', {});
     } catch {
       Alert.alert('Export', 'Could not create the export file. Try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const exportInsurance = async () => {
+    setBusy(true);
+    try {
+      const at = DateTime.utc().toISO()!;
+      const report = buildInsuranceReport(fragrances, settings.currency, at);
+      const name = insuranceFilename(at);
+
+      if (!(await Sharing.isAvailableAsync())) {
+        Alert.alert('Export', 'Sharing is not available on this device.');
+        return;
+      }
+      const file = new File(Paths.cache, name);
+      file.create({ overwrite: true });
+      // The disclaimer travels WITH the document, not just on the screen that
+      // produced it — whoever opens this file needs to know what it is.
+      file.write(`# ${disclaimer(report)}\n${toCsv(report)}`);
+      await Sharing.shareAsync(file.uri, {
+        mimeType: 'text/csv',
+        dialogTitle: 'ScentKeep collection record',
+      });
+      analytics().capture('insurance_export_created', {
+        items: report.rows.length,
+        documented: report.documentedCount,
+      });
+    } catch {
+      Alert.alert('Export', 'Could not create the record. Try again.');
     } finally {
       setBusy(false);
     }
@@ -291,6 +323,35 @@ export default function SettingsScreen() {
         <Text variant="caption" tone="faint" style={styles.hint}>
           A complete JSON file with every bottle, diary entry and setting.
         </Text>
+        {isPremium ? (
+          <>
+            <Button
+              testID="settings-insurance"
+              label="Insurance record (CSV)"
+              variant="secondary"
+              fullWidth
+              style={styles.dangerButton}
+              loading={busy}
+              onPress={exportInsurance}
+            />
+            <Text variant="caption" tone="faint" style={styles.hint}>
+              An itemised record with purchase prices, dates and which items have a photo — the
+              things a carrier asks for. It is a record of what you entered, not an appraisal.
+            </Text>
+          </>
+        ) : (
+          <Button
+            testID="settings-insurance-locked"
+            label="Insurance record — Premium"
+            variant="secondary"
+            fullWidth
+            style={styles.dangerButton}
+            onPress={() => {
+              analytics().capture('free_cap_hit', { cap: 'insurance-export' });
+              router.push({ pathname: '/paywall', params: { source: 'insurance-export' } });
+            }}
+          />
+        )}
         <Button
           testID="settings-delete"
           label="Delete everything"

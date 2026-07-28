@@ -26,7 +26,12 @@ export interface EventMap {
   sotd_logged: { collection_size: number; streak: number; from: 'home' | 'diary' | 'bottle' | 'reminder' };
   sotd_deleted: Record<string, never>;
 
-  free_cap_hit: { cap: 'wardrobe' | 'wishlist' | 'history' | 'stats' | 'sync' | 'themes' };
+  free_cap_hit: {
+    cap: 'wardrobe' | 'wishlist' | 'history' | 'stats' | 'sync' | 'themes' | 'bottle-levels' | 'insurance-export';
+  };
+  bottle_level_adjusted: { was_estimate: boolean };
+  insurance_export_created: { items: number; documented: number };
+  running_low_viewed: { low_count: number };
   paywall_viewed: { source: string; variant: string };
   paywall_dismissed: { source: string; variant: string };
   purchase_started: { package_id: string; period: string; variant: string };

@@ -31,28 +31,33 @@ const DAY = 86400000;
 const iso = (offset) => new Date(Date.now() - offset * DAY).toISOString().slice(0, 10);
 const stamp = (offset) => new Date(Date.now() - offset * DAY).toISOString();
 
+// name, house, family, ml, price, seasons, occasions, longevity, sillage, rating,
+// type, concentration, houseTier
 const BOTTLES = [
-  ['Tobacco Vanille', 'Tom Ford', 'Gourmand', 50, 285, ['Autumn', 'Winter'], ['Evening', 'Date'], 5, 5, 5],
-  ['Aventus', 'Creed', 'Chypre', 100, 445, ['Spring', 'Summer', 'Autumn'], ['Formal', 'Special'], 5, 5, 5],
-  ['Bleu de Chanel', 'Chanel', 'Woody', 100, 135, ['Autumn', 'Winter'], ['Work', 'Formal'], 4, 3, 4],
-  ['Layton', 'Parfums de Marly', 'Amber', 125, 355, ['Autumn', 'Winter'], ['Evening', 'Date'], 5, 4, 5],
-  ['Oud Wood', 'Tom Ford', 'Woody', 50, 270, ['Autumn', 'Winter'], ['Evening', 'Special'], 4, 3, 5],
-  ['Sauvage', 'Dior', 'Fresh', 100, 118, ['Spring', 'Summer'], ['Daily', 'Work'], 4, 4, 4],
-  ['Acqua di Giò Profumo', 'Giorgio Armani', 'Aquatic', 75, 105, ['Summer'], ['Daily'], 3, 3, 4],
-  ['Light Blue', 'Dolce & Gabbana', 'Citrus', 75, 92, ['Summer'], ['Daily', 'Travel'], 2, 3, 3],
-  ['Reflection Man', 'Amouage', 'Floral', 100, 390, ['Spring'], ['Formal'], 4, 4, 4],
+  ['Tobacco Vanille', 'Tom Ford', 'Gourmand', 50, 285, ['Autumn', 'Winter'], ['Evening', 'Date'], 5, 5, 5, 'bottle', 'EDP', 'Niche'],
+  ['Aventus', 'Creed', 'Chypre', 100, 445, ['Spring', 'Summer', 'Autumn'], ['Formal', 'Special'], 5, 5, 5, 'bottle', 'EDP', 'Niche'],
+  ['Bleu de Chanel', 'Chanel', 'Woody', 100, 135, ['Autumn', 'Winter'], ['Work', 'Formal'], 4, 3, 4, 'bottle', 'EDP', 'Designer'],
+  ['Layton', 'Parfums de Marly', 'Amber', 125, 355, ['Autumn', 'Winter'], ['Evening', 'Date'], 5, 4, 5, 'bottle', 'EDP', 'Niche'],
+  // A small decant, worn hard — this is the one that shows as running low.
+  ['Oud Wood', 'Tom Ford', 'Woody', 10, 90, ['Autumn', 'Winter'], ['Evening', 'Special'], 4, 3, 5, 'decant', 'EDP', 'Niche'],
+  ['Sauvage', 'Dior', 'Fresh', 100, 118, ['Spring', 'Summer'], ['Daily', 'Work'], 4, 4, 4, 'bottle', 'EDT', 'Designer'],
+  ['Acqua di Giò Profumo', 'Giorgio Armani', 'Aquatic', 75, 105, ['Summer'], ['Daily'], 3, 3, 4, 'bottle', 'Parfum', 'Designer'],
+  ['Light Blue', 'Dolce & Gabbana', 'Citrus', 75, 92, ['Summer'], ['Daily', 'Travel'], 2, 3, 3, 'bottle', 'EDT', 'Designer'],
+  ['Reflection Man', 'Amouage', 'Floral', 100, 390, ['Spring'], ['Formal'], 4, 4, 4, 'bottle', 'EDP', 'Niche'],
 ];
 
+// name, house, family, ml, price, kind
 const WISHES = [
-  ['Baccarat Rouge 540', 'Maison Francis Kurkdjian', 'Amber', 70, 325],
-  ['Herod', 'Parfums de Marly', 'Gourmand', 125, 260],
+  ['Baccarat Rouge 540', 'Maison Francis Kurkdjian', 'Amber', 70, 325, 'buy'],
+  ['Herod', 'Parfums de Marly', 'Gourmand', 125, 260, 'buy'],
+  ['Oud Satin Mood', 'Maison Francis Kurkdjian', 'Amber', 70, 300, 'sniff'],
 ];
 
 function buildState() {
   const fragrances = [];
 
   BOTTLES.forEach((b, i) => {
-    const [name, brand, family, sizeMl, price, seasons, occasions, longevity, sillage, rating] = b;
+    const [name, brand, family, sizeMl, price, seasons, occasions, longevity, sillage, rating, type, concentration, houseTier] = b;
     fragrances.push({
       id: `demo-${i + 1}`,
       name,
@@ -72,14 +77,21 @@ function buildState() {
       sillage,
       rating,
       inWishlist: false,
+      wishlistKind: 'buy',
       notes: null,
+      type,
+      concentration,
+      houseTier,
+      spraysPerWear: 2,
+      remainingMl: null,
+      remainingMlAt: null,
       createdAt: stamp(60 - i * 5),
       updatedAt: stamp(60 - i * 5),
     });
   });
 
   WISHES.forEach((w, i) => {
-    const [name, brand, family, sizeMl, price] = w;
+    const [name, brand, family, sizeMl, price, kind] = w;
     fragrances.push({
       id: `wish-${i + 1}`,
       name,
@@ -99,7 +111,14 @@ function buildState() {
       sillage: 0,
       rating: 0,
       inWishlist: true,
+      wishlistKind: kind,
       notes: null,
+      type: 'bottle',
+      concentration: 'EDP',
+      houseTier: 'Niche',
+      spraysPerWear: 2,
+      remainingMl: null,
+      remainingMlAt: null,
       createdAt: stamp(10 - i),
       updatedAt: stamp(10 - i),
     });
@@ -162,7 +181,8 @@ const SHOTS = [
   { name: '02-diary', route: '/diary', wait: 2200 },
   { name: '03-insights', route: '/stats', wait: 2200 },
   { name: '04-log-sotd', route: '/log-sotd', wait: 2200 },
-  { name: '05-bottle', route: '/bottle/demo-2', wait: 2200 },
+  // demo-5 is the small decant worn hard, so its level bar is the interesting one.
+  { name: '05-bottle', route: '/bottle/demo-5', wait: 2400 },
   { name: '06-paywall', route: '/paywall', wait: 2400, premium: false },
   { name: '07-settings', route: '/settings', wait: 2200 },
   { name: '08-onboarding', route: '/onboarding', wait: 2200, fresh: true },

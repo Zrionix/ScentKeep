@@ -11,7 +11,6 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottleTile } from '@/components/BottleTile';
-import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { EmptyState, PageHeader } from '@/components/ui/Screen';
 import { Tag, TagRow } from '@/components/ui/Tag';
@@ -19,6 +18,7 @@ import { Text } from '@/components/ui/Text';
 import { wardrobeCap, wishlistCap } from '@/domain/entitlements';
 import { hasLoggedToday } from '@/domain/sotd';
 import { ownedBottles, wishlistBottles } from '@/domain/stats';
+import { WISHLIST_KIND_LABELS, WISHLIST_KINDS, type WishlistKind } from '@/domain/types';
 import { applyFilter, distinctFamilies, EMPTY_FILTER, isFilterActive, SORT_LABELS, type SortKey } from '@/domain/wardrobe';
 import { analytics } from '@/lib/analytics';
 import { useStore } from '@/state/store';
@@ -38,12 +38,19 @@ export default function WardrobeScreen() {
   const isPremium = useStore((s) => s.isPremium);
 
   const [shelf, setShelf] = useState<Shelf>('wardrobe');
+  const [wishKind, setWishKind] = useState<WishlistKind>('buy');
   const [filter, setFilter] = useState({ ...EMPTY_FILTER });
   const [showSort, setShowSort] = useState(false);
 
   const owned = useMemo(() => ownedBottles(fragrances), [fragrances]);
   const wishlist = useMemo(() => wishlistBottles(fragrances), [fragrances]);
-  const source = shelf === 'wardrobe' ? owned : wishlist;
+  // Collectors keep "to buy" and "to try" as separate lists; the cap is on the
+  // combined total, so both counts still matter for the banner.
+  const wishOfKind = useMemo(
+    () => wishlist.filter((f) => f.wishlistKind === wishKind),
+    [wishlist, wishKind],
+  );
+  const source = shelf === 'wardrobe' ? owned : wishOfKind;
   const visible = useMemo(() => applyFilter(source, filter), [source, filter]);
   const families = useMemo(() => distinctFamilies(source), [source]);
 
@@ -61,7 +68,10 @@ export default function WardrobeScreen() {
       router.push({ pathname: '/paywall', params: { source: `cap-${shelf}` } });
       return;
     }
-    router.push({ pathname: '/bottle/new', params: { wishlist: shelf === 'wishlist' ? '1' : '0' } });
+    router.push({
+      pathname: '/bottle/new',
+      params: { wishlist: shelf === 'wishlist' ? '1' : '0', kind: wishKind },
+    });
   };
 
   return (
@@ -100,6 +110,24 @@ export default function WardrobeScreen() {
             ) : null}
 
             <ShelfSwitch shelf={shelf} owned={owned.length} wishlist={wishlist.length} onChange={setShelf} />
+
+            {shelf === 'wishlist' ? (
+              <View style={styles.kindRow}>
+                <TagRow>
+                  {WISHLIST_KINDS.map((k) => (
+                    <Tag
+                      key={k}
+                      label={`${WISHLIST_KIND_LABELS[k]} · ${
+                        wishlist.filter((f) => f.wishlistKind === k).length
+                      }`}
+                      selected={wishKind === k}
+                      testID={`wishkind-${k}`}
+                      onPress={() => setWishKind(k)}
+                    />
+                  ))}
+                </TagRow>
+              </View>
+            ) : null}
 
             {source.length > 0 ? (
               <>
@@ -406,6 +434,7 @@ const styles = StyleSheet.create({
   },
   searchGlyph: { fontSize: 17 },
   searchInput: { flex: 1, paddingVertical: 0 },
+  kindRow: { marginBottom: space.lg },
   filterRow: { gap: space.sm, paddingRight: space.lg },
   filterScroll: { marginBottom: space.md, marginHorizontal: -space.lg, paddingHorizontal: space.lg },
   sortRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

@@ -41,9 +41,9 @@ any locked card on the Insights tab. No demo account is needed.
 
 Three products, one non-consumable and two auto-renewing subscriptions in a
 single group:
-- Monthly — $3.99/month
-- Annual — $19.99/year, with a 30-day free trial
-- Lifetime — $39.99 one-time
+- Monthly — $4.99/month
+- Annual — $24.99/year, with a 30-day free trial
+- Lifetime — $59.99 one-time
 
 The paywall shows, on screen: the price and period of every plan, the free-trial
 length, the auto-renewal disclosure, a Restore Purchases control, and links to

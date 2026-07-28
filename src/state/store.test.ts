@@ -357,6 +357,99 @@ describe('deletion tombstones', () => {
   });
 });
 
+describe('setBottleLevel', () => {
+  it('records the level and stamps when it was measured', () => {
+    const f = add('Aventus', { sizeMl: 100 });
+    if (!f.ok) throw new Error('setup failed');
+    const r = useStore.getState().setBottleLevel(f.value.id, 40);
+    expect(r.ok && r.value.remainingMl).toBe(40);
+    expect(r.ok && r.value.remainingMlAt).toBeTruthy();
+  });
+
+  it('clears the level and its timestamp together', () => {
+    // The database enforces the same pairing: a level with no measurement time
+    // cannot be depleted from correctly.
+    const f = add('Aventus', { sizeMl: 100 });
+    if (!f.ok) throw new Error('setup failed');
+    useStore.getState().setBottleLevel(f.value.id, 40);
+    const r = useStore.getState().setBottleLevel(f.value.id, null);
+    expect(r.ok && r.value.remainingMl).toBeNull();
+    expect(r.ok && r.value.remainingMlAt).toBeNull();
+  });
+
+  it('clamps a level above the bottle size', () => {
+    const f = add('Small', { sizeMl: 50 });
+    if (!f.ok) throw new Error('setup failed');
+    const r = useStore.getState().setBottleLevel(f.value.id, 500);
+    expect(r.ok && r.value.remainingMl).toBe(50);
+  });
+
+  it('clamps a negative level to zero', () => {
+    const f = add('Any', { sizeMl: 50 });
+    if (!f.ok) throw new Error('setup failed');
+    const r = useStore.getState().setBottleLevel(f.value.id, -10);
+    expect(r.ok && r.value.remainingMl).toBe(0);
+  });
+
+  it('reports not-found for an unknown id', () => {
+    expect(useStore.getState().setBottleLevel('nope', 10)).toEqual({ ok: false, reason: 'not-found' });
+  });
+});
+
+describe('wishlist kinds', () => {
+  it('defaults a new wish to the to-buy list', () => {
+    const f = add('Wanted', { inWishlist: true });
+    expect(f.ok && f.value.wishlistKind).toBe('buy');
+  });
+
+  it('keeps to-buy and to-try as separate lists', () => {
+    add('Buying', { inWishlist: true, wishlistKind: 'buy' });
+    add('Trying', { inWishlist: true, wishlistKind: 'sniff' });
+    const all = useStore.getState().fragrances.filter((f) => f.inWishlist);
+    expect(all.filter((f) => f.wishlistKind === 'buy')).toHaveLength(1);
+    expect(all.filter((f) => f.wishlistKind === 'sniff')).toHaveLength(1);
+  });
+
+  it('caps the two lists COMBINED, not each separately', () => {
+    // Otherwise the free tier would quietly double when the list split in two.
+    for (let i = 0; i < FREE_LIMITS.wishlist; i += 1) {
+      add(`Want ${i}`, { inWishlist: true, wishlistKind: i % 2 ? 'buy' : 'sniff' });
+    }
+    expect(add('One too many', { inWishlist: true, wishlistKind: 'sniff' })).toEqual({
+      ok: false,
+      reason: 'cap-wishlist',
+    });
+  });
+
+  it('records the chosen list when demoting a bottle to the wishlist', () => {
+    const f = add('Owned');
+    if (!f.ok) throw new Error('setup failed');
+    const r = useStore.getState().moveToWishlist(f.value.id, 'sniff');
+    expect(r.ok && r.value.wishlistKind).toBe('sniff');
+  });
+});
+
+describe('new collector fields', () => {
+  it('defaults a new item to a full bottle at 2 sprays', () => {
+    const f = add('Default');
+    expect(f.ok && f.value.type).toBe('bottle');
+    expect(f.ok && f.value.spraysPerWear).toBe(2);
+  });
+
+  it('stores type, concentration and house tier', () => {
+    const f = add('Decanted', {
+      type: 'decant',
+      concentration: 'EDP',
+      houseTier: 'Niche',
+      spraysPerWear: 4,
+    });
+    expect(f.ok && f.value.type).toBe('decant');
+    expect(f.ok && f.value.concentration).toBe('EDP');
+    expect(f.ok && f.value.houseTier).toBe('Niche');
+    expect(f.ok && f.value.spraysPerWear).toBe(4);
+  });
+});
+
 describe('downgrade behaviour', () => {
   it('keeps over-cap data on downgrade rather than deleting it', () => {
     // A lapsed subscriber must never lose bottles. The cap blocks NEW adds; it

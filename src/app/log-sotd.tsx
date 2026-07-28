@@ -12,6 +12,7 @@ import { Text } from '@/components/ui/Text';
 import { alreadyLogged, currentStreak, rediscoverSuggestion } from '@/domain/sotd';
 import { ownedBottles } from '@/domain/stats';
 import { analytics } from '@/lib/analytics';
+import { goBack } from '@/lib/nav';
 import { todayIso } from '@/lib/dates';
 import { useStore } from '@/state/store';
 import { colorForFamily, OCCASIONS, radius, space, type as typeScale } from '@/theme';
@@ -92,7 +93,7 @@ export default function LogSotdScreen() {
       streak: currentStreak(useStore.getState().sotd),
       from: (params.from as 'home' | 'diary' | 'bottle' | 'reminder') ?? 'home',
     });
-    router.back();
+    goBack(router);
   };
 
   if (owned.length === 0) {
@@ -260,7 +261,7 @@ export default function LogSotdScreen() {
           size="lg"
           fullWidth
         />
-        <Button label="Cancel" variant="ghost" onPress={() => router.back()} style={styles.cancel} />
+        <Button label="Cancel" variant="ghost" onPress={() => goBack(router)} style={styles.cancel} />
       </View>
     </Screen>
   );

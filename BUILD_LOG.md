@@ -238,8 +238,25 @@ Format: `[NEEDS-HUMAN] ScentKeep — <what> — <why> — <blocking?>`
 - `[NEEDS-HUMAN] ScentKeep — Decide the public support email address — the site and App Review both need a mailbox that a human reads; support@scentkeep.app does not exist yet because the domain is not purchased — BLOCKING`
 
 ### Blocking real purchases (the app runs on stubs without these)
-- `[NEEDS-HUMAN] ScentKeep — Create a RevenueCat project and give me the iOS/Android PUBLIC SDK keys — the token file's sk_ key is scoped to EmberFree; without a key the app runs the purchases stub, which refuses to grant premium in a release build — BLOCKING for monetisation, not for a TestFlight build`
-- `[NEEDS-HUMAN] ScentKeep — Create the three IAP products in App Store Connect (monthly $3.99, annual $19.99 with a 30-day free trial, lifetime $39.99) in ONE subscription group — the first IAP submission must include the app version + EACH subscription + the GROUP in a single draft submission, and subscription pricing must be set in the UI (the API sets a US-only price and leaves it MISSING_METADATA) — BLOCKING for monetisation`
+- `[NEEDS-HUMAN] ScentKeep — Generate an App Store Connect IN-APP PURCHASE key (.p8, Key ID + Issuer ID) so the RevenueCat Apple app configuration can be created — RevenueCat now REQUIRES this key before it will create an App Store app config, and generating it needs your Apple credentials — BLOCKING for monetisation, not for a TestFlight build`
+
+  **Progress:** the RevenueCat project itself is done. `ScentKeep` (id
+  `0770dfee`) exists, with entitlement id **`premium`** — matching
+  `src/domain/entitlements.ts` exactly — and a default offering of
+  Monthly / Yearly / Lifetime. The **Test Store** public SDK key is wired into
+  the local `.env` so purchase logic can be exercised on a dev build today. It
+  is deliberately absent from the EAS production environment, and `src/lib/env.ts`
+  discards it in release builds, because a test-store key in a shipped app would
+  make it look like it was selling subscriptions while charging nobody.
+
+  > ⚠️ RevenueCat is showing an **ongoing incident**: *"Newly created apps error
+  > with 'The key is not valid or is not compatible with the Bundle ID of your
+  > app'."* Re-verify any platform key generated while that is open —
+  > https://status.revenuecat.com/incidents/mr3l9wqygn3d
+
+  Also worth clearing: the RevenueCat account shows *"Your email address is not
+  yet confirmed"*, which may restrict some actions.
+- `[NEEDS-HUMAN] ScentKeep — Create the three IAP products in App Store Connect (monthly $4.99, annual $24.99 with a 30-day free trial, lifetime $59.99) in ONE subscription group — the first IAP submission must include the app version + EACH subscription + the GROUP in a single draft submission, and subscription pricing must be set in the UI (the API sets a US-only price and leaves it MISSING_METADATA) — BLOCKING for monetisation`
 - `[NEEDS-HUMAN] ScentKeep — Set REVENUECAT_WEBHOOK_SECRET as a Supabase Edge Function secret and point the RevenueCat webhook at https://iqpknjohrjieepvzgqoz.supabase.co/functions/v1/revenuecat-webhook — the function currently fails closed and rejects everything, by design — BLOCKING for entitlement mirroring`
 
 ### Non-blocking

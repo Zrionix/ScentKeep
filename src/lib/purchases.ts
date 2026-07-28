@@ -50,16 +50,16 @@ export interface Purchases {
 /** Shape of the paywall when RevenueCat is unreachable. Mirrors the intended
  *  store products (brief §3) so the paywall is never blank in dev. */
 export const STUB_PACKAGES: Package[] = [
-  { id: '$rc_monthly', title: 'Monthly', priceString: '$3.99', price: 3.99, period: 'monthly' },
+  { id: '$rc_monthly', title: 'Monthly', priceString: '$4.99', price: 4.99, period: 'monthly' },
   {
     id: '$rc_annual',
     title: 'Annual',
-    priceString: '$19.99',
-    price: 19.99,
+    priceString: '$24.99',
+    price: 24.99,
     period: 'annual',
     freeTrialDays: 30,
   },
-  { id: '$rc_lifetime', title: 'Lifetime', priceString: '$39.99', price: 39.99, period: 'lifetime' },
+  { id: '$rc_lifetime', title: 'Lifetime', priceString: '$59.99', price: 59.99, period: 'lifetime' },
 ];
 
 /** Where the stub remembers a simulated purchase. Dev/test only. */
