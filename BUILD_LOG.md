@@ -184,7 +184,7 @@ rows, insert a row owned by A, attach a diary entry to A's bottle, read A's
 subscription, write its own subscription to self-grant premium, read the billing
 ledger, or list A's photo folder. **18 passed, 0 failed.**
 
-### End-to-end — 94 steps through the real UI
+### End-to-end — 97 steps through the real UI
 `npm run e2e` drives a headless browser:
 fresh install → onboarding (answers persisted, not shown again) → add bottle
 (validation refuses an empty name) → log SOTD (duplicate refused) → diary
@@ -195,7 +195,7 @@ them locked → bottle levels → collector fields and the split wishlist →
 discovery (similar bottles name the notes they share; layering partners; free
 user sees it locked) → today's pick explains itself and offers alternates →
 the shelf card renders and carries no price → settings controls present →
-**no console errors, no failing network requests**. **94 passed, 0 failed.**
+**no console errors, no failing network requests**. **97 passed, 0 failed.**
 
 Two things the walk taught, both now written into the script: seeded rows need
 REAL v4 UUIDs (`fragrances.id` is a uuid column, so `e2e-anchor` 400s), and
@@ -210,6 +210,14 @@ wordmark overflowed the bottom of the 4:5 frame on the first build and every
 innerText check passed regardless, because the element was still in the DOM —
 just outside the region that gets exported. The walk now compares the
 wordmark's bounding box against the card's.
+
+The walk also PRESSES Share and watches the capture happen.
+react-native-view-shot ships an RNViewShot.web.ts backed by html2canvas, so
+the ref wiring - the part most likely to be wrong, and the part that fails
+silently by producing a blank image - is testable here after all. The
+assertion is on the element size html2canvas reports: a ref pointing at the
+screen would report the 414x896 viewport, a broken ref reports nothing, and
+the card reports 4:5. What this still cannot prove is the NATIVE iOS capture.
 
 ### Verified live
 - Cloud sync actually wrote 12 bottles + a diary entry into Postgres.

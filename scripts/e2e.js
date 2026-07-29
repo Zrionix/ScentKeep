@@ -637,6 +637,40 @@ async function main() {
       )}`,
     );
 
+    // Actually press the button and watch the capture happen.
+    //
+    // react-native-view-shot ships an RNViewShot.web.ts that runs html2canvas,
+    // so the ref wiring — the part most likely to be wrong, and the part that
+    // fails silently by producing a blank image — IS testable here. What this
+    // cannot prove is the native iOS capture; that still needs a device, and it
+    // is on the pre-submission list for exactly that reason.
+    const captureLogs = [];
+    const onCapture = (m) => captureLogs.push(m.text());
+    page.on('console', onCapture);
+    await tap(page, 'share-export');
+    await settle(page, 6000);
+    page.off('console', onCapture);
+
+    check('the capture runs to completion', captureLogs.some((l) => /Finished rendering/i.test(l)));
+
+    // The size html2canvas reports is the size of the element the ref resolved
+    // to. A ref pointing at the screen instead of the card would report the
+    // 414x896 viewport; a broken ref reports nothing at all. Asserting the 4:5
+    // ratio rather than literal pixels keeps this from breaking every time the
+    // card's logical size is retuned.
+    const sized = captureLogs
+      .map((l) => /element at [\d,]+ with size (\d+)x(\d+)/i.exec(l))
+      .find(Boolean);
+    check(
+      'the capture targets the card itself, at 4:5',
+      Boolean(sized) && Math.abs(Number(sized[2]) / Number(sized[1]) - 1350 / 1080) < 0.02,
+      sized ? `${sized[1]}x${sized[2]}` : 'html2canvas never reported an element size',
+    );
+    check(
+      'pressing Share does not surface an error',
+      !/Could not create the image/i.test(await bodyText(page)),
+    );
+
     // ----------------------------------------------------------- settings
     console.log('\n[13] Settings');
     // Drop to free FIRST so the gated controls can be checked in their locked
