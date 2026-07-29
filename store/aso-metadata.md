@@ -50,12 +50,13 @@ Your fragrance collection, kept properly. Log every bottle, record what you wear
 ```
 ScentKeep is a digital wardrobe for the fragrances you own.
 
-Log every bottle with a photo, its note pyramid, size, price and your own ratings for longevity and sillage. Keep a wishlist of what you're hunting. And each day, record your Scent of the Day in a single tap — building a wear history you'll actually want to look back on.
+Log every bottle with a photo, its note pyramid, size, concentration, price and your own ratings for longevity and sillage. Decants and samples get their own type, so a 5 ml split never gets counted as a full bottle. Keep a wishlist of what you're hunting. And each day, record your Scent of the Day in a single tap — building a wear history you'll actually want to look back on.
 
-Over time that history turns into something useful: which bottles you really reach for, which have sat untouched for months, what your collection is actually made of, and what each bottle has cost you per wear.
+Over time that history turns into something useful: which bottles you really reach for, which have sat untouched for months, what your collection is actually made of, what each bottle has cost you per wear — and roughly how much juice you have left.
 
 — YOUR WARDROBE —
-• Every bottle with photo, house, notes, size, price and purchase date
+• Every bottle with photo, house, notes, size, concentration, price and purchase date
+• Bottles, decants and samples kept as distinct types
 • Longevity, sillage and overall ratings
 • Season and occasion tags
 • Search across names, houses and notes — accents optional
@@ -67,6 +68,12 @@ Over time that history turns into something useful: which bottles you really rea
 • A dated diary with streaks and an eight-week activity view
 • A gentle daily reminder, at a time you choose
 
+— HOW MUCH IS LEFT —
+• Live bottle levels, worked out from your own wear history
+• A warning before a favourite runs dry
+• An estimate of when each bottle runs out at your current rate
+• Correct the level any time you top up or measure
+
 — INSIGHTS —
 • Collection value and total volume
 • Most-worn bottles and cost per wear
@@ -74,9 +81,13 @@ Over time that history turns into something useful: which bottles you really rea
 • Bottles not worn in 90 days
 • Breakdowns by olfactory family and by season
 
-— WISHLIST —
-• Track the bottles you're hunting
+— WISHLIST, SPLIT IN TWO —
+• What you mean to buy, and what you only mean to sniff first
 • Move one to your wardrobe the day you buy it
+
+— WORTH INSURING —
+• An itemised export of your collection with prices, dates and photos
+• A record you can hand to an insurer, kept honest: purchase prices only, never a valuation
 
 — BUILT TO RESPECT YOU —
 • No account required. Start using it immediately.
@@ -86,10 +97,10 @@ Over time that history turns into something useful: which bottles you really rea
 • Delete your data, for real, from inside the app
 
 FREE
-Up to 12 bottles, a 3-bottle wishlist, unlimited daily logging, and the last 30 days of your diary.
+Up to 12 bottles, a 5-slot wishlist, unlimited daily logging, and the last 30 days of your diary.
 
 PREMIUM
-Unlimited wardrobe and wishlist, your complete diary history, full insights, cloud backup and sync, and extra themes.
+Bottle levels and rebuy warnings, unlimited wardrobe and wishlist, your complete diary history, full insights, the insurance-ready export, cloud backup and sync, and extra themes.
 
 Premium is available monthly, annually, or as a one-time lifetime purchase. The annual plan includes a 30-day free trial. Subscriptions renew automatically unless cancelled at least 24 hours before the period ends; manage or cancel any time in your device account settings.
 

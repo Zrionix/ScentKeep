@@ -32,6 +32,9 @@ const CHECKS = [
   { heading: '### Promotional Text', label: 'Apple promo text', limit: 170 },
   { heading: '### Title —', label: 'Play title', limit: 30 },
   { heading: '### Short description', label: 'Play short description', limit: 80 },
+  // The long description is shared between both stores; Apple's 4000 is the
+  // tighter of the two ceilings, so checking against it covers Play as well.
+  { heading: '### Description', label: 'long description', limit: 4000 },
 ];
 
 let failed = 0;
