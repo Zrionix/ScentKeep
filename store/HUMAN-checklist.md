@@ -8,25 +8,41 @@ Connect's web UI lies about state more often than it should.
 
 ---
 
-## The short version, as of build 6
+## The short version, as of build 7
 
-**Done and verified by API:** description, keywords, subtitle, promo text,
-support/marketing/privacy URLs, categories (Lifestyle / Utilities), age rating
-4+, copyright, content-rights declaration, App Review contact and notes, eight
-screenshots in order, app price (Free), 175 territories with
-`availableInNewTerritories`, build 6 attached to version 1.0, and all three IAPs
-at `READY_TO_SUBMIT`. `node scripts/asc-listing.js` re-checks the lot.
+**Nothing is blocking submission.** Verified by API rather than by a UI banner:
+description, keywords, subtitle, promo text, support/marketing/privacy URLs,
+categories (Lifestyle / Utilities), age rating 4+, copyright, content-rights
+declaration, App Review contact and notes, eight screenshots in order, app price
+(Free), 175 territories with `availableInNewTerritories`, **build 7** attached to
+version 1.0, all three IAPs at `READY_TO_SUBMIT`, and the App Privacy label
+filled in and **published**. `node scripts/asc-listing.js` re-checks the lot.
+
+Agreements, Tax and Banking are **Active** on Zrionix Technology, Inc — Free Apps
+and Paid Apps agreements, bank account, W-9, and Digital Services Act trader
+status for 27 EU countries. `support@scentkeep.com → nathan@zrionix.dev` is live.
 
 **Left, and only you can do them:**
 
-1. **Agreements, Tax and Banking.** Paid Apps agreement plus the tax and banking
-   forms, at App Store Connect → Business. There is no API for it, and no
-   in-app purchase can be sold until it is accepted. This is the real blocker.
-2. **The App Privacy questionnaire.** `appDataUsages` is not a relationship this
-   app exposes — I checked, it 404s — so it is genuinely web-UI only. The
-   answers are drafted in `store/data-safety.md`; copy them exactly.
-3. **Press Submit.** Both for Beta App Review (external TestFlight) and for the
-   App Store. Outward-facing and hard to reverse, so it stays yours.
+1. **Press Submit.** For the App Store, and separately for Beta App Review if you
+   want *external* TestFlight testers — internal testers can install right now
+   without it. Remember the App Store submission is **four items in one draft**:
+   the version, both subscriptions, and the subscription group.
+2. **Decide on Apple Vision Pro.** It is ticked by Apple's default on Pricing and
+   Availability. The app is iPhone-only and has never run on visionOS; I would
+   untick it rather than let compatibility-mode users be the ones who review it.
+3. **Do one sandbox purchase on TestFlight.** The native StoreKit sheet appearing
+   is the only proof the production RevenueCat key made it into the binary.
+   Silent premium, or a "test store" sheet, means the key is missing.
+4. **Try the share card on a real device.** The E2E now presses Share and proves
+   the ref resolves to the card and the pipeline completes, but it does that
+   through react-native-view-shot's *web* implementation. The native iOS capture
+   has still never run.
+
+> One thing I could not finish: App Store Connect signed the browser session out
+> mid-way, and signing back in needs your Apple ID and 2FA. Everything above was
+> done through the API key, which is unaffected. The Vision Pro tick is the only
+> item that needs the web UI.
 
 ---
 
@@ -43,16 +59,14 @@ at `READY_TO_SUBMIT`. `node scripts/asc-listing.js` re-checks the lot.
       `https://scentkeep.com/privacy` serves the real page, and `SITE_BASE` now
       points at the owned domain. Confirmed by `npm run check:links`.
 
-- [ ] **Click the Cloudflare verification email.** Email Routing is configured
-      for `scentkeep.com` — all five DNS records (3× MX, DKIM, SPF) are in place
-      and Cloudflare-managed, and `nathan@zrionix.dev` is registered as the
-      destination. It sits at **Pending** until you click the verification link
-      Cloudflare emailed to that address. Cloudflare will not let a rule target
-      an unverified mailbox, and that is a proof-of-ownership check worth
-      respecting rather than routing around.
+- [x] ~~Click the Cloudflare verification email~~ — **done, and the rule is
+      live.** `nathan@zrionix.dev` shows **Verified** as a destination, and the
+      `support@scentkeep.com → nathan@zrionix.dev` routing rule is **Active**.
+      All five DNS records (3× MX, DKIM, SPF) are Cloudflare-managed.
 
-      Once you've clicked it, tell me and I'll create the
-      `support@scentkeep.com → nathan@zrionix.dev` rule — about ten seconds.
+      TestFlight's tester-facing feedback address now points at
+      `support@scentkeep.com` rather than the personal one it used while routing
+      was pending.
 
       (`zrionix.dev` is on Proton Mail, not Cloudflare Email Routing, so there
       is no forward-to-a-forward problem.)
