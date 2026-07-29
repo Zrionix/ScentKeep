@@ -619,6 +619,24 @@ async function main() {
       cardText.slice(0, 200),
     );
 
+    // Geometry, not text. The wordmark overflowed the bottom of the card on the
+    // first build and every check based on innerText passed anyway, because the
+    // element was still in the DOM — just outside the frame that gets exported.
+    const cardBox = await (await page.$(sel('shelf-card'))).boundingBox();
+    const markBox = await (await page.$(sel('shelf-card-mark'))).boundingBox();
+    check(
+      'the card is exported at 4:5',
+      Math.abs(cardBox.height / cardBox.width - 1350 / 1080) < 0.02,
+      `${Math.round(cardBox.width)}x${Math.round(cardBox.height)}`,
+    );
+    check(
+      'the wordmark sits inside the card, not off the bottom of it',
+      markBox.y + markBox.height <= cardBox.y + cardBox.height + 1,
+      `mark ends at ${Math.round(markBox.y + markBox.height)}, card ends at ${Math.round(
+        cardBox.y + cardBox.height,
+      )}`,
+    );
+
     // ----------------------------------------------------------- settings
     console.log('\n[13] Settings');
     // Drop to free FIRST so the gated controls can be checked in their locked

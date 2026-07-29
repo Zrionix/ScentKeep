@@ -31,8 +31,16 @@ export const CARD_HEIGHT = 1350;
 /** Rendered at a third scale and captured at 3x, so text stays crisp without
  *  laying out a 1080pt-wide view on a 390pt-wide screen. */
 export const CARD_SCALE = 3;
-const W = CARD_WIDTH / CARD_SCALE;
-const H = CARD_HEIGHT / CARD_SCALE;
+
+/** The card's size in layout points. Exported because any container showing it
+ *  must be given this height explicitly — a horizontal ScrollView nested inside
+ *  a vertical one collapses to a fraction of its content and silently crops the
+ *  bottom of the card, wordmark and all. */
+export const CARD_LOGICAL_WIDTH = CARD_WIDTH / CARD_SCALE;
+export const CARD_LOGICAL_HEIGHT = CARD_HEIGHT / CARD_SCALE;
+
+const W = CARD_LOGICAL_WIDTH;
+const H = CARD_LOGICAL_HEIGHT;
 
 const P = palettes.dark;
 
@@ -42,7 +50,7 @@ export interface ShelfCardProps {
 
 export function ShelfCard({ data }: ShelfCardProps) {
   return (
-    <View style={styles.card} collapsable={false}>
+    <View testID="shelf-card" style={styles.card} collapsable={false}>
       <View style={styles.head}>
         <Text variant="overline" style={styles.eyebrow}>
           {data.title}
@@ -95,7 +103,7 @@ export function ShelfCard({ data }: ShelfCardProps) {
           making this shareable, but it goes at the bottom in the quiet colour
           rather than across the middle — a card people are embarrassed to post
           drives no installs at all. */}
-      <View style={styles.foot}>
+      <View testID="shelf-card-mark" style={styles.foot}>
         <View style={[styles.mark, { backgroundColor: P.accent }]} />
         <Text variant="caption" style={styles.wordmark}>
           ScentKeep
@@ -105,32 +113,57 @@ export function ShelfCard({ data }: ShelfCardProps) {
   );
 }
 
-const CELL_W = (W - space.xxl * 2 - space.lg * 2) / 3;
+// --- the height budget -------------------------------------------------------
+// The card is a FIXED 4:5 frame, so its contents have to fit inside it. They
+// did not on the first attempt: 3x2 portrait thumbnails plus a header came to
+// ~496pt in a 450pt card, and the wordmark quietly fell off the bottom of every
+// exported image. The frame won that argument, so the tiles are square and the
+// gutters are tight. Roughly, at W=360 / H=450:
+//
+//   padding      36 + 28                        =  64
+//   header       overline + title + stat        =  80
+//   grid         2 rows x (93 tile + 38 text)   = 274
+//   wordmark                                    =  16
+//                                                 ---
+//                                                 434, leaving ~16 of slack
+//
+// Anything added here has to come out of that slack. Check it against the
+// exported image, not the on-screen preview — the E2E asserts the wordmark sits
+// inside the card's bounds precisely because innerText still reported it as
+// present while it was being clipped.
+const PAD_H = 28;
+const PAD_TOP = 36;
+const PAD_BOTTOM = 28;
+const GUTTER = space.md;
+const CELL_W = (W - PAD_H * 2 - GUTTER * 2) / 3;
 
 const styles = StyleSheet.create({
   card: {
     width: W,
     height: H,
     backgroundColor: P.bg,
-    paddingHorizontal: space.xxl,
-    paddingTop: space.xxl + space.lg,
-    paddingBottom: space.xxl,
+    paddingHorizontal: PAD_H,
+    paddingTop: PAD_TOP,
+    paddingBottom: PAD_BOTTOM,
     justifyContent: 'space-between',
+    // Guarantees the exported bitmap is exactly the frame, with nothing bleeding
+    // past its edges into the capture.
+    overflow: 'hidden',
   },
-  head: { gap: 6 },
+  head: { gap: 5 },
   eyebrow: { color: P.accent },
   heading: { color: P.ink },
   stat: { color: P.ink3 },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: space.lg,
+    gap: GUTTER,
     justifyContent: 'flex-start',
   },
-  cell: { width: CELL_W, gap: 5 },
+  cell: { width: CELL_W, gap: 3 },
   thumb: {
     width: CELL_W,
-    height: CELL_W * 1.25,
+    height: CELL_W,
     borderRadius: radius.md,
     borderWidth: StyleSheet.hairlineWidth,
     overflow: 'hidden',
@@ -138,7 +171,7 @@ const styles = StyleSheet.create({
   },
   thumbImage: { width: '100%', height: '100%' },
   monogramWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  monogram: { fontSize: 40, lineHeight: 48, fontWeight: '300', opacity: 0.85 },
+  monogram: { fontSize: 34, lineHeight: 42, fontWeight: '300', opacity: 0.85 },
   name: { color: P.ink },
   caption: { color: P.ink3 },
   foot: { flexDirection: 'row', alignItems: 'center', gap: space.sm },

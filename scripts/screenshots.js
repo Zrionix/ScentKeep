@@ -186,6 +186,9 @@ const SHOTS = [
   { name: '06-paywall', route: '/paywall', wait: 2400, premium: false },
   { name: '07-settings', route: '/settings', wait: 2200 },
   { name: '08-onboarding', route: '/onboarding', wait: 2200, fresh: true },
+  // The share card is a fixed-size view inside a horizontal scroller, so it
+  // needs a moment longer for the bottle thumbnails to settle before capture.
+  { name: '09-share', route: '/share', wait: 3000 },
 ];
 
 // App Store: 6.9" iPhone is 1320x2868. 6.5" is 1242x2688. Play wants 1080x1920+.

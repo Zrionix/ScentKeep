@@ -22,6 +22,10 @@ const KEY_PATH = path.join(__dirname, '..', 'credentials', 'AuthKey_X25AAYH8QT.p
 const KEY_ID = 'X25AAYH8QT';
 const ISSUER = '905684d2-c99b-4bb1-91dc-98bcf84d2c81';
 const APPLY = process.argv.includes('--apply');
+/** Re-upload the App Review screenshot even when one is already attached. Worth
+ *  running whenever the paywall itself changes — a reviewer looking at last
+ *  month's paywall is being shown the wrong product. */
+const REFRESH_SHOTS = process.argv.includes('--refresh-screenshots');
 
 const SCREENSHOT = path.join(__dirname, '..', 'store', 'screenshots', '06-paywall.png');
 
@@ -131,12 +135,19 @@ async function ensureScreenshot(kind, id, bytes, checksum) {
       : `/v2/inAppPurchases/${id}/appStoreReviewScreenshot`;
 
   const current = (await api('GET', relPath)).data;
-  if (current) {
+  if (current && !REFRESH_SHOTS) {
     skip(`review screenshot on ${id}`);
     return;
   }
 
-  plan(`review screenshot on ${id} — ${path.basename(SCREENSHOT)}`);
+  // Re-uploading means deleting first: the relationship holds at most one
+  // screenshot, and POSTing a second returns a conflict rather than replacing.
+  if (current) {
+    plan(`replace review screenshot on ${id}`);
+    if (APPLY) await api('DELETE', `/v1/${current.type}/${current.id}`);
+  }
+
+  if (!current) plan(`review screenshot on ${id} — ${path.basename(SCREENSHOT)}`);
   if (!APPLY) return;
 
   const type =

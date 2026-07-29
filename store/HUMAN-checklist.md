@@ -267,7 +267,7 @@ mentioning it anywhere — see the check in section F.
 
 - [ ] `npm run ship-check` green (type-check, lint, 401 tests, ASO limits)
 - [ ] `npm run test:rls` green (18 cross-user denial assertions)
-- [ ] `npm run e2e` green (92 steps)
+- [ ] `npm run e2e` green (94 steps)
 - [ ] `scentkeep://log-sotd` opens the logging screen from Safari or Shortcuts
       on the TestFlight build. This is what lets someone build their own
       one-tap Home Screen button before the real widget exists.

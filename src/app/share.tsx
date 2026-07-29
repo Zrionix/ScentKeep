@@ -3,7 +3,12 @@ import * as Sharing from 'expo-sharing';
 import React, { useMemo, useRef, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
-import { CARD_HEIGHT, CARD_SCALE, CARD_WIDTH, ShelfCard } from '@/components/ShelfCard';
+import {
+  CARD_HEIGHT,
+  CARD_LOGICAL_HEIGHT,
+  CARD_WIDTH,
+  ShelfCard,
+} from '@/components/ShelfCard';
 import { Button } from '@/components/ui/Button';
 import { EmptyState, PageHeader, Screen } from '@/components/ui/Screen';
 import { Tag, TagRow } from '@/components/ui/Tag';
@@ -109,12 +114,17 @@ export default function ShareScreen() {
 
       {/* Horizontal scroll rather than a scaled-down preview: the card is a
           fixed size by design, and shrinking it to fit would show the user
-          something other than what gets exported. */}
+          something other than what gets exported.
+
+          The explicit height is load-bearing. Nested inside the screen's
+          vertical ScrollView, a horizontal one collapses to a fraction of its
+          content height and crops the bottom of the card — wordmark included —
+          without any warning that it has done so. */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.previewScroll}
-        style={styles.preview}
+        style={[styles.preview, { height: CARD_LOGICAL_HEIGHT }]}
       >
         <View ref={cardRef} collapsable={false}>
           <ShelfCard data={data} />
@@ -123,7 +133,7 @@ export default function ShareScreen() {
 
       <Text variant="caption" tone="faint" style={styles.note}>
         Prices, dates and your diary never appear on the card — only what you own and how often you
-        wear it. Captured at {CARD_WIDTH}×{CARD_HEIGHT}, {CARD_SCALE}× for a sharp post.
+        wear it. Exported at {CARD_WIDTH}×{CARD_HEIGHT}.
       </Text>
 
       <Button
