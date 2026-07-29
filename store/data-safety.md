@@ -11,14 +11,31 @@ adding a Crash Data declaration.
 
 ## What ScentKeep collects
 
+**As shipped in build 7 there is NO analytics SDK.** `EXPO_PUBLIC_POSTHOG_KEY`
+is absent from the EAS production environment, and `integrations.analytics` is
+`Boolean(env.posthogKey)` — so PostHog is never even `require`d. Nothing below
+may therefore claim an Analytics purpose.
+
+Build 6 and earlier shipped a privacy manifest that DID claim Analytics on User
+ID and Device ID, plus a Product Interaction type that nothing recorded. That
+over-declaration was corrected in `app.json` rather than papered over: a label
+that overstates is a trust problem even though no user is harmed by it, and
+Apple compares the label against the manifest.
+
 | Data type | Collected? | Linked to user? | Used for tracking? | Purpose | Where in code |
 |---|---|---|---|---|---|
-| **User ID** (random, anonymous) | Yes | Yes | No | App functionality, Analytics | `src/lib/auth.ts` — `signInAnonymously` |
-| **Device ID** | Yes, only if PostHog is enabled | Yes | No | Analytics | `src/lib/analytics.ts` |
-| **Product interaction** | Yes | Yes | No | Analytics, App functionality | `src/lib/analytics.ts` — event map |
+| **User ID** (random, anonymous) | Yes | Yes | No | App functionality | `src/lib/auth.ts` — `signInAnonymously` |
+| **Device ID** | Yes — the IDFV the RevenueCat SDK reads to identify the purchaser | Yes | No | App functionality | `src/lib/purchases.ts` |
 | **Purchase history** | Yes | Yes | No | App functionality | RevenueCat → `subscriptions` table |
 | **Photos** | Yes, only ones the user attaches | Yes | No | App functionality | `src/lib/photos.ts` |
 | **Other user content** (bottle names, notes, diary entries) | Yes | Yes | No | App functionality | `src/lib/sync.ts` |
+
+**Product interaction is NOT collected.** The typed event map in
+`src/lib/analytics.ts` exists and is unit-tested, but with no key it resolves to
+`stubAnalytics()`, which appends to an in-memory array and sends nothing. If a
+PostHog key is ever added to the production environment, this table, the
+privacy manifest in `app.json`, and the App Privacy label must all gain
+Analytics purposes and a Product Interaction row in the same change.
 
 ## What ScentKeep does NOT collect
 

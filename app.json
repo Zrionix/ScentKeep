@@ -23,8 +23,7 @@
             "NSPrivacyCollectedDataTypeLinked": true,
             "NSPrivacyCollectedDataTypeTracking": false,
             "NSPrivacyCollectedDataTypePurposes": [
-              "NSPrivacyCollectedDataTypePurposeAppFunctionality",
-              "NSPrivacyCollectedDataTypePurposeAnalytics"
+              "NSPrivacyCollectedDataTypePurposeAppFunctionality"
             ]
           },
           {
@@ -32,15 +31,6 @@
             "NSPrivacyCollectedDataTypeLinked": true,
             "NSPrivacyCollectedDataTypeTracking": false,
             "NSPrivacyCollectedDataTypePurposes": [
-              "NSPrivacyCollectedDataTypePurposeAnalytics"
-            ]
-          },
-          {
-            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeProductInteraction",
-            "NSPrivacyCollectedDataTypeLinked": true,
-            "NSPrivacyCollectedDataTypeTracking": false,
-            "NSPrivacyCollectedDataTypePurposes": [
-              "NSPrivacyCollectedDataTypePurposeAnalytics",
               "NSPrivacyCollectedDataTypePurposeAppFunctionality"
             ]
           },
