@@ -29,11 +29,10 @@ const APPLY = process.argv.includes('--apply');
 
 const LOCALE = 'en-US';
 
-// Cloudflare Email Routing for support@scentkeep.com is still waiting on the
-// destination-mailbox verification click, so testers get an address that is
-// certain to deliver today. Flip this the moment routing goes green — it is one
-// re-run of this script.
-const FEEDBACK_EMAIL = 'nathan@zrionix.dev';
+// Live: nathan@zrionix.dev is a verified destination and the
+// support@scentkeep.com routing rule is Active in Cloudflare. Testers get the
+// branded address, and it lands in the same inbox.
+const FEEDBACK_EMAIL = 'support@scentkeep.com';
 
 const MARKETING_URL = 'https://scentkeep.com';
 const PRIVACY_URL = 'https://scentkeep.com/privacy';

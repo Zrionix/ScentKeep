@@ -9,14 +9,14 @@
 **What ScentKeep does**
 
 ScentKeep is a personal catalogue for a fragrance collection. A user records the
-perfumes they own — photo, house, note pyramid, size, price, personal ratings —
-keeps a wishlist, and logs a "Scent of the Day" each day. The accumulated wear
-history produces collection insights: most-worn bottles, cost per wear, how much
-of the collection is in rotation, and which bottles have gone untouched.
+perfumes they own — photo, house, note pyramid, size, price, ratings — keeps a
+wishlist, and logs a "Scent of the Day". That wear history produces the
+insights: most-worn bottles, cost per wear, how much of the collection is in
+rotation, and which bottles have gone untouched.
 
 **No account is required.** The app is fully usable on first launch with no
-sign-up, no email, and no personal details. Everything below is reachable
-immediately — please do not wait for a login screen, there isn't one.
+sign-up, no email and no personal details. Please do not wait for a login
+screen — there isn't one.
 
 **How to reach each feature**
 
@@ -37,15 +37,13 @@ immediately — please do not wait for a login screen, there isn't one.
 
 **On the recommendations**
 
-Every suggestion — the daily pick, the similarity matches, the layering pairs,
-the wishlist triage — is computed **on the device** from data the user typed in
-themselves. There is no bundled or scraped fragrance database, no server call,
-and no third-party model. Each suggestion displays the reason that produced it,
-and the code refuses to return a match when the entered data cannot support one
-(`src/domain/similarity.ts`, `layering.ts`, `suggest.ts`).
+Every suggestion — the daily pick, similarity matches, layering pairs, wishlist
+triage — is computed on the device from what the user typed. No bundled or
+scraped fragrance database, no server call, no third-party model. Each shows the
+reason that produced it, and returns nothing when the data cannot support a
+claim.
 
-The share card carries no price, no date and nothing from the diary. That is
-enforced in `src/domain/shelfCard.ts` and asserted by a unit test.
+The share card carries no price, no date and nothing from the diary.
 
 **Reaching the paywall**
 
@@ -69,19 +67,17 @@ that the free tier already has.
 
 **Privacy and data**
 
-- Anonymous-first. A user is identified only by a random ID; no email, name,
-  phone number, contacts, or location is collected at any point.
-- The collection lives on the device. It is uploaded only for Premium
-  subscribers who have cloud backup, and then only to that user's own rows,
-  enforced by Postgres row-level security.
-- Bottle photos are chosen by the user from their library or camera. They are
-  stored in a private, per-user bucket and are never public.
-- Settings → "Export my data" produces a complete JSON file of everything the
-  user has entered.
-- Settings → "Delete everything" removes the account and all associated data
-  from our servers (guideline 5.1.1(v)).
-- No advertising, no third-party ad SDKs, no tracking across apps. The App
-  Tracking Transparency prompt is not shown because we do not track.
+- Anonymous-first: a random ID only. No email, name, phone, contacts or
+  location is collected at any point.
+- The collection lives on the device. It uploads only for Premium subscribers
+  with cloud backup, and only into that user's own rows, enforced by Postgres
+  row-level security.
+- Photos come from the user's own library or camera into a private, per-user
+  bucket. Never public.
+- Settings offers a complete JSON export and a real account deletion that
+  removes everything from our servers (guideline 5.1.1(v)).
+- No ads, no ad SDKs, no cross-app tracking. No App Tracking Transparency
+  prompt, because we do not track.
 
 **Permissions and why**
 

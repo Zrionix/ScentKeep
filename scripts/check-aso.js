@@ -52,6 +52,29 @@ for (const c of CHECKS) {
   if (!ok) failed += 1;
 }
 
+// The App Review notes field is also capped at 4000, and it is filled from the
+// "For Review" section of review-notes.md by scripts/asc-listing.js. Checking it
+// here means an over-long note fails the gate rather than halfway through an
+// upload that has already changed half the listing.
+const REVIEW_NOTES = path.join(__dirname, '..', 'store', 'review-notes.md');
+const notesSection = fs
+  .readFileSync(REVIEW_NOTES, 'utf8')
+  .split('## For Review')[1]
+  ?.split('\n---')[0]
+  ?.trim();
+
+if (!notesSection) {
+  console.log('  FAIL  review-notes.md has no "## For Review" section');
+  failed += 1;
+} else {
+  // Measured after the same plain-text transform the uploader applies, since
+  // that is what Apple actually receives.
+  const plain = notesSection.replace(/\*\*/g, '').replace(/`([^`]*)`/g, '$1').replace(/→/g, '->');
+  const ok = plain.length <= 4000;
+  console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${'App Review notes'.padEnd(24)} ${String(plain.length).padStart(4)} / 4000`);
+  if (!ok) failed += 1;
+}
+
 // Apple counts a space after a comma against the 100-character budget, so a
 // keyword list with spaces is silently smaller than it looks.
 const keywords = blockAfter('### Keywords');

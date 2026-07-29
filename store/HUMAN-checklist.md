@@ -8,6 +8,28 @@ Connect's web UI lies about state more often than it should.
 
 ---
 
+## The short version, as of build 6
+
+**Done and verified by API:** description, keywords, subtitle, promo text,
+support/marketing/privacy URLs, categories (Lifestyle / Utilities), age rating
+4+, copyright, content-rights declaration, App Review contact and notes, eight
+screenshots in order, app price (Free), 175 territories with
+`availableInNewTerritories`, build 6 attached to version 1.0, and all three IAPs
+at `READY_TO_SUBMIT`. `node scripts/asc-listing.js` re-checks the lot.
+
+**Left, and only you can do them:**
+
+1. **Agreements, Tax and Banking.** Paid Apps agreement plus the tax and banking
+   forms, at App Store Connect → Business. There is no API for it, and no
+   in-app purchase can be sold until it is accepted. This is the real blocker.
+2. **The App Privacy questionnaire.** `appDataUsages` is not a relationship this
+   app exposes — I checked, it 404s — so it is genuinely web-UI only. The
+   answers are drafted in `store/data-safety.md`; copy them exactly.
+3. **Press Submit.** Both for Beta App Review (external TestFlight) and for the
+   App Store. Outward-facing and hard to reverse, so it stays yours.
+
+---
+
 ## A. Before anything else (5 minutes, decides the rest)
 
 - [x] ~~Decide on the domain~~ — **bought.** `scentkeep.com`, $10.46/yr on
