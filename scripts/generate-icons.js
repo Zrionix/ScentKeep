@@ -17,7 +17,15 @@ const OUT = path.join(__dirname, '..', 'assets', 'images');
 // Brand tokens — must match src/theme/index.ts.
 const BG = '#0B0A0C';
 const GOLD = '#C9A961';
-const GOLD_DIM = '#7A6538';
+
+// The launcher icon runs the palette the other way round: the flacon in near-
+// black on a gold field. Chosen from the contact sheet in
+// scripts/logo-variants.js, because gold-on-black is the one thing a dark home
+// screen cannot show — at 60px the dark version dissolves into the wallpaper
+// while this one still reads as an object. Everything drawn ON a dark surface
+// (splash, Android themed icon) stays gold; only the icon tiles invert.
+const ICON_FIELD = GOLD;
+const ICON_MARK = BG;
 
 // --- Flacon geometry, in a 1000x1000 design space -------------------------
 // Declared as explicit numbers so the composition can be CENTRED on its real
@@ -104,14 +112,14 @@ function bottle(cx, cy, scale, { solid = false } = {}) {
   `;
 }
 
-function iconSvg(size, { background = BG, fill = 0.62, solid = false } = {}) {
+function iconSvg(size, { background = ICON_FIELD, mark = ICON_MARK, fill = 0.62, solid = false } = {}) {
   // `fill` is the fraction of the canvas height the mark occupies. The mark is
   // perfectly centred — it is a single symmetric object, so geometric and
   // optical centre agree and no nudge is needed.
   const scale = (size * fill) / TOTAL_H;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
     ${background === 'none' ? '' : `<rect width="${size}" height="${size}" fill="${background}"/>`}
-    <g color="${GOLD}">${bottle(size / 2, size / 2, scale, { solid })}</g>
+    <g color="${mark}">${bottle(size / 2, size / 2, scale, { solid })}</g>
   </svg>`;
 }
 
@@ -146,13 +154,19 @@ async function main() {
   );
   await write(
     'android-icon-background.png',
-    `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024"><rect width="1024" height="1024" fill="${BG}"/></svg>`,
+    `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024"><rect width="1024" height="1024" fill="${ICON_FIELD}"/></svg>`,
     1024,
   );
   await write('android-icon-monochrome.png', monochromeSvg(1024), 1024);
 
-  // Splash mark — transparent, drawn on the splash background colour.
-  await write('splash-icon.png', iconSvg(512, { background: 'none', fill: 0.72 }), 512);
+  // Splash mark — transparent, drawn on the DARK splash background, so this one
+  // keeps the gold flacon. Inverting it here would paint near-black on
+  // near-black.
+  await write(
+    'splash-icon.png',
+    iconSvg(512, { background: 'none', mark: GOLD, fill: 0.72 }),
+    512,
+  );
 
   // Favicon: at 64px a 2px outline disappears, so this one takes the solid
   // silhouette instead of the outlined flacon.

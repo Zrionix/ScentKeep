@@ -32,6 +32,16 @@ export type GatedFeature =
   | 'full-history'
   | 'advanced-stats'
   | 'bottle-levels'
+  /**
+   * Everything derived by comparing bottles to each other: what else on the
+   * shelf smells like this one, which two layer well, where the collection is
+   * concentrated, and which wishlist entries are really repeats.
+   *
+   * Deliberately NOT including the daily "what should I wear today" pick. That
+   * one is the habit the whole app depends on, and a habit you have to pay for
+   * is a habit nobody forms.
+   */
+  | 'discovery'
   | 'insurance-export'
   | 'cloud-sync'
   | 'themes'
@@ -49,6 +59,11 @@ export const PREMIUM_FEATURES: { key: GatedFeature; title: string; detail: strin
     key: 'unlimited-wardrobe',
     title: 'Unlimited wardrobe',
     detail: `Bottles, decants and samples — every one of them, past ${FREE_LIMITS.wardrobe}.`,
+  },
+  {
+    key: 'discovery',
+    title: 'Find what else you already own',
+    detail: 'What smells like what, which two layer well, and which wishes are repeats.',
   },
   {
     key: 'advanced-stats',

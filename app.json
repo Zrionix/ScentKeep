@@ -100,7 +100,7 @@
     "android": {
       "package": "com.scentkeep.app",
       "adaptiveIcon": {
-        "backgroundColor": "#0B0A0C",
+        "backgroundColor": "#C9A961",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottleTile } from '@/components/BottleTile';
+import { TodaySuggestion } from '@/components/TodaySuggestion';
 import { Card } from '@/components/ui/Card';
 import { EmptyState, PageHeader } from '@/components/ui/Screen';
 import { Tag, TagRow } from '@/components/ui/Tag';
@@ -106,6 +107,24 @@ export default function WardrobeScreen() {
               <SotdPrompt
                 loggedToday={loggedToday}
                 onPress={() => router.push({ pathname: '/log-sotd', params: { from: 'home' } })}
+              />
+            ) : null}
+
+            {/* Below the log prompt, not above it: someone who already knows
+                what they are wearing should not have to scroll past a
+                suggestion to say so. */}
+            {shelf === 'wardrobe' && !loggedToday ? (
+              <TodaySuggestion
+                fragrances={fragrances}
+                entries={sotd}
+                onWear={(f) => {
+                  analytics().capture('suggestion_accepted', { source: 'home' });
+                  router.push({
+                    pathname: '/log-sotd',
+                    params: { from: 'home', fragranceId: f.id },
+                  });
+                }}
+                onOpen={(f) => router.push({ pathname: '/bottle/[id]', params: { id: f.id } })}
               />
             ) : null}
 

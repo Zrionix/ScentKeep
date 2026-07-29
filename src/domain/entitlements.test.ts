@@ -82,6 +82,7 @@ describe('feature gating', () => {
       'full-history',
       'advanced-stats',
       'bottle-levels',
+      'discovery',
       'insurance-export',
       'cloud-sync',
       'themes',

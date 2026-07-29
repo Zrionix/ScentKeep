@@ -118,6 +118,94 @@ async function seedStore(page, mutate) {
   );
 }
 
+/**
+ * A fresh v4 UUID for every seeded row.
+ *
+ * Two properties matter and both were learned the hard way:
+ *   - `fragrances.id` is a uuid column, so a readable id like "e2e-anchor"
+ *     makes every sync push 400.
+ *   - the id must be NEW each run. Each run signs in as a new anonymous user,
+ *     so a fixed id collides with the row the previous run left behind and RLS
+ *     correctly refuses the write with a 403 — the test would be asserting
+ *     against another user's data if it did not.
+ */
+const uuid = () => require('node:crypto').randomUUID();
+
+/** The field set a stored fragrance must carry, so a seeded row is shaped
+ *  exactly like one the app wrote itself. */
+function blankFragrance(at) {
+  return {
+    brand: 'E2E House',
+    photoUrl: null,
+    notesTop: null,
+    notesHeart: null,
+    notesBase: null,
+    family: null,
+    sizeMl: null,
+    price: null,
+    currency: 'USD',
+    purchaseDate: null,
+    seasons: [],
+    occasions: [],
+    longevity: 0,
+    sillage: 0,
+    rating: 0,
+    inWishlist: false,
+    wishlistKind: 'buy',
+    notes: null,
+    type: 'bottle',
+    concentration: null,
+    houseTier: null,
+    spraysPerWear: 2,
+    remainingMl: null,
+    remainingMlAt: null,
+    createdAt: at,
+    updatedAt: at,
+  };
+}
+
+/**
+ * Runs a block against a brand-new browser context — separate cookies, separate
+ * localStorage, and therefore a separate anonymous Supabase user.
+ *
+ * Needed wherever an assertion depends on the cloud being EMPTY. Clearing local
+ * storage alone does not achieve that: the same anonymous session reconnects and
+ * pulls its rows straight back.
+ */
+async function withFreshContext(browser, fn) {
+  const context = await browser.createBrowserContext();
+  const page = await context.newPage();
+  try {
+    await page.setViewport({ width: 414, height: 896, deviceScaleFactor: 1 });
+    await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }]);
+    await fn(page);
+  } finally {
+    await context.close();
+  }
+}
+
+/** Puts a ready-made shelf in front of the app, skipping onboarding. */
+async function seedShelf(page, bottles) {
+  const at = new Date().toISOString();
+  await page.goto(BASE, { waitUntil: 'networkidle2' });
+  await settle(page, 2500);
+  await page.evaluate(
+    (key, rows, when) => {
+      const raw = window.localStorage.getItem(key);
+      const doc = raw ? JSON.parse(raw) : { state: {}, version: 0 };
+      doc.state.fragrances = rows;
+      doc.state.sotd = [];
+      doc.state.settings = { ...(doc.state.settings || {}), onboardedAt: when };
+      window.localStorage.setItem(key, JSON.stringify(doc));
+    },
+    STORAGE_KEY,
+    bottles.map((b) => ({ ...blankFragrance(at), ...b })),
+    at,
+  );
+  await page.goto(BASE, { waitUntil: 'networkidle2' });
+  await settle(page, 2500);
+}
+
 async function main() {
   const browser = await puppeteer.launch({
     headless: HEADLESS ? 'new' : false,
@@ -416,8 +504,123 @@ async function main() {
     await settle(page, 800);
     check('switching lists keeps the wishlist on screen', await present(page, 'shelf-wishlist'));
 
+    // --------------------------------------------------- discovery + suggest
+    console.log('\n[12] Discovery, the daily pick and the shelf card');
+
+    // Two bottles that genuinely share a base, plus one that shares nothing, so
+    // the similarity engine has something real to find rather than being
+    // asserted against an empty list.
+    const anchorId = uuid();
+    const twinId = uuid();
+    const liftId = uuid();
+    const seedAt = new Date().toISOString();
+    const discoveryRows = [
+      {
+        ...blankFragrance(seedAt),
+        id: anchorId,
+        name: 'E2E Anchor',
+        family: 'Amber',
+        notesHeart: 'Vanilla',
+        notesBase: 'Labdanum, Benzoin',
+        sillage: 3,
+      },
+      {
+        ...blankFragrance(seedAt),
+        id: twinId,
+        name: 'E2E Twin',
+        family: 'Amber',
+        notesHeart: 'Vanilla',
+        notesBase: 'Labdanum, Benzoin',
+        sillage: 3,
+      },
+      {
+        ...blankFragrance(seedAt),
+        id: liftId,
+        name: 'E2E Lift',
+        family: 'Citrus',
+        notesTop: 'Bergamot, Lemon',
+        notesBase: 'Vanilla',
+        sillage: 2,
+      },
+    ];
+    await page.evaluate(
+      (key, rows) => {
+        const raw = window.localStorage.getItem(key);
+        const doc = raw ? JSON.parse(raw) : { state: {}, version: 0 };
+        doc.state.isPremium = true;
+        doc.state.fragrances = [...(doc.state.fragrances || []), ...rows];
+        window.localStorage.setItem(key, JSON.stringify(doc));
+      },
+      STORAGE_KEY,
+      discoveryRows,
+    );
+    await page.evaluate((k) => window.localStorage.setItem(k, 'true'), STUB_PREMIUM_KEY);
+
+    await page.goto(`${BASE}/bottle/${anchorId}`, { waitUntil: 'networkidle2' });
+    await settle(page, 1800);
+    check('a premium user sees what else smells like this', await present(page, 'detail-similar'));
+    check('the twin is found', await present(page, `similar-${twinId}`));
+    const similarText = await bodyText(page);
+    check(
+      'the similarity states its evidence rather than only a number',
+      /Shares .*(Labdanum|Benzoin|Vanilla)/i.test(similarText),
+    );
+    check('layering partners are offered', await present(page, 'detail-layering'));
+    check('the citrus lift is the partner', await present(page, `layer-${liftId}`));
+
+    await seedStore(page, (state) => ({ ...state, isPremium: false }));
+    await page.evaluate((k) => window.localStorage.removeItem(k), STUB_PREMIUM_KEY);
+    await page.goto(`${BASE}/bottle/${anchorId}`, { waitUntil: 'networkidle2' });
+    await settle(page, 1800);
+    check('a free user sees discovery locked', await present(page, 'detail-discovery-locked'));
+    check('a free user does not see the matches', !(await present(page, 'detail-similar')));
+
+    await seedStore(page, (state) => ({ ...state, isPremium: true }));
+    await page.evaluate((k) => window.localStorage.setItem(k, 'true'), STUB_PREMIUM_KEY);
+    await page.goto(`${BASE}/stats`, { waitUntil: 'networkidle2' });
+    await settle(page, 1800);
+    check('the shelf shape is shown', (await present(page, 'stat-shape')) || (await present(page, 'stat-shape-sparse')));
+    check('layering ideas are offered', (await present(page, 'stat-pairs')) || (await present(page, 'stat-pairs-empty')));
+
+    // The daily pick only appears before anything is logged today, and this
+    // session logged one in step 4. Clearing `sotd` locally is not enough: the
+    // reload pulls the cloud copy straight back, because this browser holds a
+    // real anonymous session whose entry is already on the server. A fresh
+    // browser context gets a fresh anonymous user with nothing to restore.
+    await withFreshContext(browser, async (fresh) => {
+      await seedShelf(fresh, [
+        { id: uuid(), name: 'Pick One' },
+        { id: uuid(), name: 'Pick Two' },
+        { id: uuid(), name: 'Pick Three' },
+      ]);
+      check("today's pick is offered", await present(fresh, 'today-suggestion'));
+      const pickText = await bodyText(fresh);
+      check(
+        'the pick explains itself rather than just naming a bottle',
+        /never worn|rested|tagged for|five-star|last worn|on your shelf/i.test(pickText),
+      );
+      await tap(fresh, 'today-suggestion-more');
+      check('alternates are one tap away', await present(fresh, 'today-suggestion-alternates'));
+      check(
+        'the pick offers a way to log it in one tap',
+        await present(fresh, 'today-suggestion-wear'),
+      );
+    });
+
+    await page.goto(`${BASE}/share`, { waitUntil: 'networkidle2' });
+    await settle(page, 1800);
+    check('the shelf card renders', await present(page, 'share'));
+    check('the card offers a mode switch', await present(page, 'share-mode-top-rated'));
+    const cardText = await bodyText(page);
+    check('the card carries the wordmark', /ScentKeep/.test(cardText));
+    check(
+      'the card shows no prices',
+      !/\$\s?\d|USD\s?\d/.test(cardText),
+      cardText.slice(0, 200),
+    );
+
     // ----------------------------------------------------------- settings
-    console.log('\n[12] Settings');
+    console.log('\n[13] Settings');
     // Drop to free FIRST so the gated controls can be checked in their locked
     // state; the premium pass follows below.
     await seedStore(page, (state) => ({ ...state, isPremium: false }));
@@ -442,7 +645,7 @@ async function main() {
     check('a premium user gets the insurance record', await present(page, 'settings-insurance'));
 
     // ------------------------------------------------------------ console
-    console.log('\n[13] Runtime errors');
+    console.log('\n[14] Runtime errors');
     // Expo's dev bundle logs benign warnings on web; only genuine failures count.
     const real = consoleErrors.filter(
       (e) =>

@@ -155,7 +155,7 @@ which is exactly the point of doing the pass.
 
 Run everything: `npm run ship-check`, `npm run test:rls`, `npm run e2e`.
 
-### Unit — 203 tests, all passing
+### Unit — 401 tests, all passing
 `jest`, via `jest-expo`.
 
 | Suite | Covers |
@@ -164,6 +164,11 @@ Run everything: `npm run ship-check`, `npm run test:rls`, `npm run e2e`.
 | `domain/stats` | Value (float drift, mixed currencies, unpriced bottles), most-worn, cost/wear, rotation, neglect thresholds, breakdowns |
 | `domain/wardrobe` | Accent-folded multi-term search, facet AND/OR, unpriced bottles in price sorts, validation |
 | `domain/sotd` | Grouping, streaks (incl. today-not-yet-logged grace), history windowing, rediscover suggestion |
+| `domain/notes` | Note parsing: punctuation people actually type, diacritics, the timid plural rule that keeps Iris from becoming Iri, heaviest-tier dedupe |
+| `domain/similarity` | Tier-weighted cosine (a shared base beats a shared opening; a long pyramid does not win by length), the capped family-only fallback, refusing to score with no evidence, collection gaps, wishlist triage |
+| `domain/layering` | Anchor-under-lift orientation, bridge notes (openings excluded), the too-similar and too-loud markdowns, every pair explaining itself |
+| `domain/suggest` | Season, occasion (redistributed when unasked), rest window, rating, level; exclusions for wishlist/logged-today/empty; scores stay in 0..1 |
+| `domain/shelfCard` | Slot limit, mode fallback when nothing is logged, ties stable across renders, and the hard rule that no price ever reaches the card |
 | `state/store` | CRUD, cap enforcement, duplicate-wear refusal, cascade delete, downgrade retention |
 | `lib/dates` | Zone coherence across 4 timezones, malformed input |
 | `lib/purchases` | Release-mode stub refuses premium; offering mapping; paid-intro ≠ free trial |
@@ -179,15 +184,26 @@ rows, insert a row owned by A, attach a diary entry to A's bottle, read A's
 subscription, write its own subscription to self-grant premium, read the billing
 ledger, or list A's photo folder. **18 passed, 0 failed.**
 
-### End-to-end — 53 steps through the real UI
+### End-to-end — 92 steps through the real UI
 `npm run e2e` drives a headless browser:
 fresh install → onboarding (answers persisted, not shown again) → add bottle
 (validation refuses an empty name) → log SOTD (duplicate refused) → diary
 (streak reads 1) → fill to the 12-bottle cap → cap banner → "+" opens the
 paywall → paywall shows prices, trial length, auto-renew terms, Restore, Terms
 and Privacy → purchase → cap gone → premium insights unlocked → free user sees
-them locked → settings controls present → **no console errors, no failing
-network requests**. **53 passed, 0 failed.**
+them locked → bottle levels → collector fields and the split wishlist →
+discovery (similar bottles name the notes they share; layering partners; free
+user sees it locked) → today's pick explains itself and offers alternates →
+the shelf card renders and carries no price → settings controls present →
+**no console errors, no failing network requests**. **92 passed, 0 failed.**
+
+Two things the walk taught, both now written into the script: seeded rows need
+REAL v4 UUIDs (`fragrances.id` is a uuid column, so `e2e-anchor` 400s), and
+those UUIDs must be fresh each run — each run is a new anonymous user, so a
+fixed id collides with the previous run's row and RLS correctly refuses the
+write with a 403. Any assertion that needs an EMPTY cloud runs in its own
+browser context, because clearing localStorage alone just makes the same
+anonymous session pull its rows back.
 
 ### Verified live
 - Cloud sync actually wrote 12 bottles + a diary entry into Postgres.

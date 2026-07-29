@@ -72,6 +72,7 @@ export default function RootLayout() {
             <Stack.Screen name="bottle/new" options={{ presentation: 'modal' }} />
             <Stack.Screen name="bottle/[id]" />
             <Stack.Screen name="log-sotd" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="share" options={{ presentation: 'modal' }} />
           </Stack>
           {/* `booted` is intentionally unused for rendering — the UI never waits
               on bootstrap. It exists so tests can assert startup completed. */}

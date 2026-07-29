@@ -62,11 +62,26 @@ Over time that history turns into something useful: which bottles you really rea
 • Search across names, houses and notes — accents optional
 • Filter by family, sort by name, house, rating or price
 
+— WHAT SHOULD I WEAR TODAY? —
+• A daily pick from your own shelf, in one tap
+• It tells you why: the season you tagged it for, how long it has rested, how you rated it
+• Don't like it? Another suggestion is one tap away
+
 — SCENT OF THE DAY —
 • One tap to log what you're wearing
 • Optional occasion, weather, mood and a note
 • A dated diary with streaks and an eight-week activity view
 • A gentle daily reminder, at a time you choose
+
+— WHAT ELSE YOU ALREADY OWN —
+• Which bottles on your shelf smell like each other, and the notes they share
+• Which two work layered, and which goes on first
+• Where your collection is concentrated, and the families you own nothing in
+• Whether that wishlist entry is really just something you already have
+
+— SHARE YOUR SHELF —
+• A card of your collection for wherever you post
+• Never carries a price, a date or anything from your diary
 
 — HOW MUCH IS LEFT —
 • Live bottle levels, worked out from your own wear history
@@ -97,10 +112,12 @@ Over time that history turns into something useful: which bottles you really rea
 • Delete your data, for real, from inside the app
 
 FREE
-Up to 12 bottles, a 5-slot wishlist, unlimited daily logging, and the last 30 days of your diary.
+Up to 12 bottles, a 5-slot wishlist, unlimited daily logging, the last 30 days of your diary, the daily pick, and the share card.
 
 PREMIUM
-Bottle levels and rebuy warnings, unlimited wardrobe and wishlist, your complete diary history, full insights, the insurance-ready export, cloud backup and sync, and extra themes.
+Bottle levels and rebuy warnings, the discovery tools, unlimited wardrobe and wishlist, your complete diary history, full insights, the insurance-ready export, cloud backup and sync, and extra themes.
+
+Everything is worked out on your device from what you have entered. ScentKeep does not bundle or scrape a fragrance encyclopedia, and nothing about your collection is sent anywhere to produce a suggestion.
 
 Premium is available monthly, annually, or as a one-time lifetime purchase. The annual plan includes a 30-day free trial. Subscriptions renew automatically unless cancelled at least 24 hours before the period ends; manage or cancel any time in your device account settings.
 

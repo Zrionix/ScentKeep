@@ -200,6 +200,23 @@ export default function SettingsScreen() {
         </Card>
       )}
 
+      <SectionHeader title="Share" />
+      <Card
+        testID="settings-share"
+        onPress={() => router.push('/share')}
+        accessibilityLabel="Make a shareable card of your collection"
+      >
+        <View style={styles.switchRow}>
+          <View style={styles.fill}>
+            <Text variant="subtitle">Share your shelf</Text>
+            <Text variant="caption" tone="tertiary">
+              A card of your collection for wherever you post. No prices on it.
+            </Text>
+          </View>
+          <Text tone="faint">›</Text>
+        </View>
+      </Card>
+
       <SectionHeader title="Daily reminder" />
       <Card>
         <View style={styles.switchRow}>

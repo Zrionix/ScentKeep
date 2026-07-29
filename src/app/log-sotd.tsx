@@ -9,8 +9,9 @@ import { Rating } from '@/components/ui/Rating';
 import { EmptyState, PageHeader, Screen, SectionHeader } from '@/components/ui/Screen';
 import { Tag, TagRow } from '@/components/ui/Tag';
 import { Text } from '@/components/ui/Text';
-import { alreadyLogged, currentStreak, rediscoverSuggestion } from '@/domain/sotd';
+import { alreadyLogged, currentStreak } from '@/domain/sotd';
 import { ownedBottles } from '@/domain/stats';
+import { pickForToday } from '@/domain/suggest';
 import { analytics } from '@/lib/analytics';
 import { goBack } from '@/lib/nav';
 import { todayIso } from '@/lib/dates';
@@ -50,7 +51,9 @@ export default function LogSotdScreen() {
   const [rating, setRating] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  const suggestion = useMemo(() => rediscoverSuggestion(fragrances, sotd), [fragrances, sotd]);
+  // The same recommender the home screen uses, rather than a second, weaker one
+  // that could disagree with it on the same morning.
+  const suggestion = useMemo(() => pickForToday(fragrances, sotd), [fragrances, sotd]);
 
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -122,18 +125,23 @@ export default function LogSotdScreen() {
         <Card
           flat
           testID="rediscover-suggestion"
-          onPress={() => setSelectedId(suggestion.id)}
-          accessibilityLabel={`Suggestion: ${suggestion.name}. Tap to select.`}
+          onPress={() => {
+            analytics().capture('suggestion_accepted', { source: 'log' });
+            setSelectedId(suggestion.fragrance.id);
+          }}
+          accessibilityLabel={`Suggestion: ${suggestion.fragrance.name}. ${suggestion.reasons[0]} Tap to select.`}
           style={[styles.suggestion, { borderColor: colors.accentLine }]}
         >
           <Text variant="overline" tone="accent">
-            Rediscover
+            Suggested
           </Text>
           <Text variant="subtitle" style={styles.suggestionName}>
-            {suggestion.name}
+            {suggestion.fragrance.name}
           </Text>
+          {/* The reason, not just the name. Without it this is a card that
+              picks a bottle for reasons the reader cannot check. */}
           <Text variant="caption" tone="tertiary">
-            {suggestion.brand || 'Untouched for a while'}
+            {suggestion.reasons[0]}
           </Text>
         </Card>
       ) : null}

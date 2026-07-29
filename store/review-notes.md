@@ -25,11 +25,27 @@ immediately — please do not wait for a login screen, there isn't one.
    is required.
 3. **Wardrobe** → the "Scent of the Day" card at the top → pick a bottle → "Log
    today's scent".
-4. **Diary** tab → the dated history, streaks, and eight-week activity view.
-5. **Insights** tab → collection statistics. Rotation, neglected bottles and the
-   family/season breakdowns are Premium; they show a "Premium" card when locked.
-6. **Settings** tab → daily reminder, theme, currency, data export, account
-   deletion, and Restore Purchases.
+4. **Wardrobe** → "Today's pick", below that card, once three bottles are on the
+   shelf and nothing has been logged today. Free.
+5. **Diary** tab → the dated history, streaks, and eight-week activity view.
+6. **Insights** tab → collection statistics. Rotation, neglected bottles, the
+   family/season breakdowns and the discovery sections are Premium; they show a
+   "Premium" card when locked. "Share" in the top right makes the shelf card.
+7. **Any bottle** → "Smells like this" and "Layers well with", Premium.
+8. **Settings** tab → share your shelf, daily reminder, theme, currency, data
+   export, account deletion, and Restore Purchases.
+
+**On the recommendations**
+
+Every suggestion — the daily pick, the similarity matches, the layering pairs,
+the wishlist triage — is computed **on the device** from data the user typed in
+themselves. There is no bundled or scraped fragrance database, no server call,
+and no third-party model. Each suggestion displays the reason that produced it,
+and the code refuses to return a match when the entered data cannot support one
+(`src/domain/similarity.ts`, `layering.ts`, `suggest.ts`).
+
+The share card carries no price, no date and nothing from the diary. That is
+enforced in `src/domain/shelfCard.ts` and asserted by a unit test.
 
 **Reaching the paywall**
 
@@ -96,6 +112,10 @@ ScentKeep is not a generic list app with a fragrance theme:
 - **Domain-specific data model.** Note pyramid (top/heart/base), longevity and
   sillage ratings, olfactory family, and season/occasion tagging are fragrance
   concepts, not generic inventory fields.
+- **Reasoning over that model.** Tier-weighted note similarity (base counts more
+  than top, because that is what persists on skin), anchor/lift layering
+  judgement, and remaining-volume estimates from wear history. A list app with a
+  fragrance theme cannot produce any of these.
 - **Honest numbers.** Collection value counts only bottles that carry a price and
   says so on screen ("Based on 9 of 14 bottles") rather than implying it covers
   the whole shelf.

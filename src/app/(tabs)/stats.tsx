@@ -2,15 +2,19 @@ import { useRouter } from 'expo-router';
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Card, StatCard } from '@/components/ui/Card';
+import { LockedCard } from '@/components/ui/LockedCard';
 import { EmptyState, PageHeader, Screen, SectionHeader } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
 import { runningLow, totalRemainingMl } from '@/domain/bottleLevel';
 import { isFeatureUnlocked } from '@/domain/entitlements';
+import { layeringPairs } from '@/domain/layering';
+import { MIN_BOTTLES_FOR_CARD } from '@/domain/shelfCard';
+import { collectionShape, triageWishlist, type Verdict } from '@/domain/similarity';
 import { NEGLECTED_AFTER_DAYS, summarise, type Breakdown } from '@/domain/stats';
 import { analytics } from '@/lib/analytics';
 import { relativeSpan } from '@/lib/dates';
 import { useStore } from '@/state/store';
-import { colorForFamily, space } from '@/theme';
+import { colorForFamily, radius, space } from '@/theme';
 import { useTheme } from '@/theme/ThemeProvider';
 
 export default function StatsScreen() {
@@ -24,8 +28,13 @@ export default function StatsScreen() {
 
   const s = useMemo(() => summarise(fragrances, sotd, currency), [fragrances, sotd, currency]);
   const advanced = isFeatureUnlocked('advanced-stats', isPremium);
+  const discovery = isFeatureUnlocked('discovery', isPremium);
   const low = useMemo(() => runningLow(fragrances, sotd), [fragrances, sotd]);
   const leftMl = useMemo(() => totalRemainingMl(fragrances, sotd), [fragrances, sotd]);
+
+  const shape = useMemo(() => collectionShape(fragrances), [fragrances]);
+  const triage = useMemo(() => triageWishlist(fragrances), [fragrances]);
+  const pairs = useMemo(() => layeringPairs(fragrances), [fragrances]);
 
   React.useEffect(() => {
     analytics().capture('stats_viewed', { collection_size: s.bottles, is_premium: isPremium });
@@ -62,6 +71,21 @@ export default function StatsScreen() {
         subtitle={`${s.bottles} ${s.bottles === 1 ? 'bottle' : 'bottles'} · ${s.totalWears} logged ${
           s.totalWears === 1 ? 'wear' : 'wears'
         }`}
+        right={
+          s.bottles >= MIN_BOTTLES_FOR_CARD ? (
+            <Pressable
+              testID="stats-share"
+              onPress={() => router.push('/share')}
+              accessibilityRole="button"
+              accessibilityLabel="Share a card of your collection"
+              hitSlop={10}
+            >
+              <Text variant="caption" tone="accent">
+                Share
+              </Text>
+            </Pressable>
+          ) : null
+        }
       />
 
       <View style={styles.grid}>
@@ -289,6 +313,119 @@ export default function StatsScreen() {
         />
       )}
 
+      <SectionHeader title="The shape of your shelf" />
+      {discovery ? (
+        <CollectionShapeCard shape={shape} bottles={s.bottles} />
+      ) : (
+        <LockedCard
+          testID="stat-shape-locked"
+          title="Where your collection is concentrated, and where it isn't"
+          body="Worked out from the families you've tagged. Nothing leaves your device."
+          onPress={() => {
+            analytics().capture('free_cap_hit', { cap: 'discovery' });
+            router.push({ pathname: '/paywall', params: { source: 'stats-shape' } });
+          }}
+        />
+      )}
+
+      {triage.length > 0 ? (
+        <>
+          <SectionHeader title="Is your wishlist worth it?" />
+          {discovery ? (
+            <Card padded={false} testID="stat-triage">
+              {triage.slice(0, 6).map((t, i) => (
+                <Pressable
+                  key={t.fragrance.id}
+                  testID={`triage-${t.fragrance.id}`}
+                  onPress={() => router.push({ pathname: '/bottle/[id]', params: { id: t.fragrance.id } })}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${t.fragrance.name}. ${VERDICT_LABEL[t.verdict]}.`}
+                  style={[
+                    styles.triageRow,
+                    i > 0 ? { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.lineSoft } : null,
+                  ]}
+                >
+                  <View style={styles.fill}>
+                    <Text variant="subtitle" numberOfLines={1}>
+                      {t.fragrance.name}
+                    </Text>
+                    <Text variant="caption" tone="tertiary" numberOfLines={1}>
+                      {t.closest
+                        ? `Closest to ${t.closest.fragrance.name}`
+                        : t.fillsGap
+                          ? `Your first ${String(t.fragrance.family).toLowerCase()}`
+                          : 'Not enough entered to compare'}
+                    </Text>
+                  </View>
+                  <VerdictPill verdict={t.verdict} />
+                </Pressable>
+              ))}
+            </Card>
+          ) : (
+            <LockedCard
+              testID="stat-triage-locked"
+              title="Which of these you already own something like"
+              onPress={() => {
+                analytics().capture('free_cap_hit', { cap: 'discovery' });
+                router.push({ pathname: '/paywall', params: { source: 'stats-triage' } });
+              }}
+            />
+          )}
+        </>
+      ) : null}
+
+      {s.bottles >= 2 ? (
+        <>
+          <SectionHeader title="Worth layering" />
+          {discovery ? (
+            pairs.length === 0 ? (
+              <Card flat testID="stat-pairs-empty">
+                <Text variant="small" tone="tertiary">
+                  Nothing on the shelf pairs obviously yet. Add note pyramids and families and the
+                  suggestions get much better.
+                </Text>
+              </Card>
+            ) : (
+              <Card padded={false} testID="stat-pairs">
+                {pairs.map((p, i) => (
+                  <View
+                    key={`${p.anchor.id}-${p.lift.id}`}
+                    style={[
+                      styles.pairRow,
+                      i > 0 ? { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.lineSoft } : null,
+                    ]}
+                  >
+                    <View style={styles.pairNames}>
+                      <Text variant="subtitle" numberOfLines={1} style={styles.fill}>
+                        {p.anchor.name}
+                      </Text>
+                      <Text variant="caption" tone="accent">
+                        under
+                      </Text>
+                      <Text variant="subtitle" numberOfLines={1} style={styles.fill}>
+                        {p.lift.name}
+                      </Text>
+                    </View>
+                    <Text variant="caption" tone="tertiary" style={styles.pairReason}>
+                      {p.reasons[0]}
+                    </Text>
+                  </View>
+                ))}
+              </Card>
+            )
+          ) : (
+            <LockedCard
+              testID="stat-pairs-locked"
+              title="Which two of yours work together"
+              onPress={() => {
+                analytics().capture('free_cap_hit', { cap: 'discovery' });
+                router.push({ pathname: '/paywall', params: { source: 'stats-layering' } });
+              }}
+            />
+          )}
+        </>
+      ) : null}
+
       <SectionHeader title="By family" />
       {advanced ? (
         <BreakdownBars data={s.families} testID="stat-families" colored />
@@ -388,22 +525,93 @@ function BreakdownBars({
   );
 }
 
-function LockedCard({ title, onPress, testID }: { title: string; onPress: () => void; testID: string }) {
+const VERDICT_LABEL: Record<Verdict, string> = {
+  duplicate: 'Have one',
+  similar: 'Similar',
+  'new-ground': 'New ground',
+  unknown: 'Unknown',
+};
+
+function VerdictPill({ verdict }: { verdict: Verdict }) {
   const { colors } = useTheme();
+  // "Unknown" is deliberately the same neutral grey as a missing value
+  // elsewhere: it means the app has nothing to go on, not that the bottle is a
+  // bad idea, and colouring it like a warning would say the wrong thing.
+  const tone =
+    verdict === 'new-ground'
+      ? { fg: colors.positive, bg: colors.positiveBg, line: colors.positive }
+      : verdict === 'duplicate'
+        ? { fg: colors.warning, bg: colors.warningBg, line: colors.warning }
+        : verdict === 'similar'
+          ? { fg: colors.ink2, bg: colors.surface2, line: colors.line }
+          : { fg: colors.ink4, bg: colors.surface2, line: colors.line };
+
   return (
-    <Card
-      testID={testID}
-      flat
-      onPress={onPress}
-      accessibilityLabel={`${title}. Premium feature. Tap to see Premium.`}
-      style={[styles.lockedCard, { borderColor: colors.accentLine, backgroundColor: colors.accentBg }]}
-    >
-      <Text variant="overline" tone="accent">
-        Premium
+    <View style={[styles.verdictPill, { backgroundColor: tone.bg, borderColor: tone.line }]}>
+      <Text variant="caption" style={{ color: tone.fg }}>
+        {VERDICT_LABEL[verdict]}
       </Text>
-      <Text variant="small" tone="secondary" style={styles.lockedTitle}>
-        {title}
-      </Text>
+    </View>
+  );
+}
+
+/**
+ * What the shelf is made of, in words.
+ *
+ * Deliberately prose rather than another bar chart — "By family" two sections
+ * down already draws the distribution. What this adds is the reading of it, and
+ * it says out loud how many bottles it had to ignore, the same way collection
+ * value does.
+ */
+function CollectionShapeCard({ shape, bottles }: { shape: ReturnType<typeof collectionShape>; bottles: number }) {
+  if (shape.tooSparse) {
+    return (
+      <Card flat testID="stat-shape-sparse">
+        <Text variant="small" tone="tertiary">
+          Tag a few more bottles with a family and this starts to mean something. Right now{' '}
+          {shape.classified} of {bottles} {shape.classified === 1 ? 'has' : 'have'} one.
+        </Text>
+      </Card>
+    );
+  }
+
+  const top = shape.concentrations[0];
+  const missing = shape.missing.slice(0, 4);
+
+  return (
+    <Card testID="stat-shape">
+      {top ? (
+        <Text variant="body" tone="secondary">
+          <Text variant="body" tone="accent">
+            {Math.round(top.share * 100)}%
+          </Text>{' '}
+          of the bottles you have classified are {top.family.toLowerCase()}.
+        </Text>
+      ) : (
+        <Text variant="body" tone="secondary">
+          Your collection is evenly spread — no single family dominates it.
+        </Text>
+      )}
+
+      {missing.length > 0 ? (
+        <Text variant="small" tone="tertiary" style={styles.shapeBody}>
+          You own nothing in {missing.slice(0, -1).join(', ')}
+          {missing.length > 1 ? ' or ' : ''}
+          {missing[missing.length - 1]}
+          {shape.missing.length > missing.length ? `, and ${shape.missing.length - missing.length} more` : ''}.
+        </Text>
+      ) : (
+        <Text variant="small" tone="tertiary" style={styles.shapeBody}>
+          You have at least one bottle in every family ScentKeep knows about.
+        </Text>
+      )}
+
+      {shape.unclassified > 0 ? (
+        <Text variant="caption" tone="faint" style={styles.shapeBody}>
+          Based on {shape.classified} of {bottles} bottles — the other {shape.unclassified} have no
+          family set.
+        </Text>
+      ) : null}
     </Card>
   );
 }
@@ -422,6 +630,15 @@ const styles = StyleSheet.create({
   barFill: { height: '100%', borderRadius: 4 },
   bars: { gap: space.lg },
   barRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginBottom: 6 },
-  lockedCard: { borderWidth: 1 },
-  lockedTitle: { marginTop: 4 },
+  shapeBody: { marginTop: space.sm },
+  triageRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.lg },
+  verdictPill: {
+    paddingHorizontal: space.sm,
+    paddingVertical: 3,
+    borderRadius: radius.pill,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  pairReason: { marginTop: 4 },
+  pairRow: { padding: space.lg },
+  pairNames: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
 });

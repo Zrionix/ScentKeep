@@ -27,7 +27,16 @@ export interface EventMap {
   sotd_deleted: Record<string, never>;
 
   free_cap_hit: {
-    cap: 'wardrobe' | 'wishlist' | 'history' | 'stats' | 'sync' | 'themes' | 'bottle-levels' | 'insurance-export';
+    cap:
+      | 'wardrobe'
+      | 'wishlist'
+      | 'history'
+      | 'stats'
+      | 'sync'
+      | 'themes'
+      | 'bottle-levels'
+      | 'insurance-export'
+      | 'discovery';
   };
   bottle_level_adjusted: { was_estimate: boolean };
   insurance_export_created: { items: number; documented: number };
@@ -38,6 +47,11 @@ export interface EventMap {
   purchase_completed: { package_id: string; period: string; variant: string; had_trial: boolean };
   purchase_failed: { package_id: string; reason: string };
   restore_completed: { restored: boolean };
+
+  /** The daily pick was taken. The ratio of this to `sotd_logged` is how we
+   *  learn whether the suggester is any good — a suggestion nobody accepts is a
+   *  suggestion that should be removed, not tuned forever. */
+  suggestion_accepted: { source: 'home' | 'log' };
 
   stats_viewed: { collection_size: number; is_premium: boolean };
   reminder_scheduled: { time: string };

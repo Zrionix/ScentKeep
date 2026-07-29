@@ -2,17 +2,20 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useMemo } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { BottleLevelBar } from '@/components/BottleLevelBar';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { NumberField } from '@/components/ui/Field';
+import { LockedCard } from '@/components/ui/LockedCard';
 import { Rating } from '@/components/ui/Rating';
 import { Divider, EmptyState, Screen, SectionHeader } from '@/components/ui/Screen';
 import { Tag, TagRow } from '@/components/ui/Tag';
 import { Text } from '@/components/ui/Text';
 import { bottleLevel, projectRunOut } from '@/domain/bottleLevel';
 import { isFeatureUnlocked } from '@/domain/entitlements';
+import { layersWith } from '@/domain/layering';
+import { similarTo } from '@/domain/similarity';
 import { alreadyLogged } from '@/domain/sotd';
 import { wearCounts } from '@/domain/stats';
 import { ITEM_TYPE_LABELS } from '@/domain/types';
@@ -54,6 +57,15 @@ export default function BottleDetailScreen() {
     [fragrance, sotd],
   );
 
+  const similar = useMemo(
+    () => (fragrance ? similarTo(fragrance, fragrances) : []),
+    [fragrance, fragrances],
+  );
+  const pairs = useMemo(
+    () => (fragrance ? layersWith(fragrance, fragrances) : []),
+    [fragrance, fragrances],
+  );
+
   // An inline editor rather than Alert.prompt, which exists only on iOS and
   // would have left Android users unable to correct a level at all.
   const [adjusting, setAdjusting] = React.useState(false);
@@ -75,6 +87,7 @@ export default function BottleDetailScreen() {
 
   const tint = colorForFamily(fragrance.family, colors);
   const loggedToday = alreadyLogged(sotd, fragrance.id, todayIso());
+  const discovery = isFeatureUnlocked('discovery', isPremium);
 
   const confirmDelete = () =>
     Alert.alert(
@@ -254,23 +267,15 @@ export default function BottleDetailScreen() {
               ) : null}
             </Card>
           ) : (
-            <Card
+            <LockedCard
               testID="bottle-level-locked"
-              flat
+              title="See how much is left in this bottle"
+              body="And get a nudge before it runs dry."
               onPress={() => {
                 analytics().capture('free_cap_hit', { cap: 'bottle-levels' });
                 router.push({ pathname: '/paywall', params: { source: 'bottle-level' } });
               }}
-              accessibilityLabel="Bottle level tracking is a Premium feature. Tap to see Premium."
-              style={[styles.lockedCard, { borderColor: colors.accentLine, backgroundColor: colors.accentBg }]}
-            >
-              <Text variant="overline" tone="accent">
-                Premium
-              </Text>
-              <Text variant="small" tone="secondary" style={styles.lockedBody}>
-                See how much is left in this bottle, and get a nudge before it runs dry.
-              </Text>
-            </Card>
+            />
           )}
         </>
       ) : null}
@@ -297,6 +302,106 @@ export default function BottleDetailScreen() {
                 </View>
               ))}
           </Card>
+        </>
+      ) : null}
+
+      {/* Only offered where it can actually say something. A "similar bottles"
+          heading over an empty card teaches the user the feature is broken,
+          when the real answer is that nothing on their shelf is close. */}
+      {!fragrance.inWishlist && discovery && similar.length > 0 ? (
+        <>
+          <SectionHeader title="Smells like this" />
+          <Card padded={false} testID="detail-similar">
+            {similar.map((m, i) => (
+              <Pressable
+                key={m.fragrance.id}
+                testID={`similar-${m.fragrance.id}`}
+                onPress={() => router.push({ pathname: '/bottle/[id]', params: { id: m.fragrance.id } })}
+                accessibilityRole="button"
+                accessibilityLabel={`${m.fragrance.name}, ${Math.round(m.similarity.score * 100)} percent similar`}
+                style={[
+                  styles.relatedRow,
+                  i > 0 ? { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.lineSoft } : null,
+                ]}
+              >
+                <View
+                  style={[styles.relatedSwatch, { backgroundColor: colorForFamily(m.fragrance.family, colors) }]}
+                />
+                <View style={styles.fill}>
+                  <Text variant="subtitle" numberOfLines={1}>
+                    {m.fragrance.name}
+                  </Text>
+                  {/* The evidence, not just a percentage. A number on its own
+                      invites "similar how?" and has no answer. */}
+                  <Text variant="caption" tone="tertiary" numberOfLines={1}>
+                    {m.similarity.shared.length > 0
+                      ? `Shares ${m.similarity.shared.slice(0, 3).map((n) => n.label).join(', ')}`
+                      : 'Same family — no notes entered to compare'}
+                  </Text>
+                </View>
+                <Text variant="caption" tone="accent">
+                  {Math.round(m.similarity.score * 100)}%
+                </Text>
+              </Pressable>
+            ))}
+          </Card>
+        </>
+      ) : null}
+
+      {!fragrance.inWishlist && discovery && pairs.length > 0 ? (
+        <>
+          <SectionHeader title="Layers well with" />
+          <Card padded={false} testID="detail-layering">
+            {pairs.map((p, i) => {
+              const other = p.anchor.id === fragrance.id ? p.lift : p.anchor;
+              const goesUnder = p.anchor.id === fragrance.id;
+              return (
+                <Pressable
+                  key={other.id}
+                  testID={`layer-${other.id}`}
+                  onPress={() => router.push({ pathname: '/bottle/[id]', params: { id: other.id } })}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${other.name}. ${p.reasons[0]}`}
+                  style={[
+                    styles.relatedRow,
+                    i > 0 ? { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.lineSoft } : null,
+                  ]}
+                >
+                  <View
+                    style={[styles.relatedSwatch, { backgroundColor: colorForFamily(other.family, colors) }]}
+                  />
+                  <View style={styles.fill}>
+                    <Text variant="subtitle" numberOfLines={1}>
+                      {other.name}
+                    </Text>
+                    <Text variant="caption" tone="tertiary" numberOfLines={2}>
+                      {p.reasons[0]}
+                    </Text>
+                  </View>
+                  <Text variant="caption" tone="accent">
+                    {goesUnder ? 'on top' : 'underneath'}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </Card>
+        </>
+      ) : null}
+
+      {/* The gate is shown only when there is something behind it. Offering
+          Premium on a one-bottle shelf sells a feature that would show nothing. */}
+      {!fragrance.inWishlist && !discovery && fragrances.filter((f) => !f.inWishlist).length >= 3 ? (
+        <>
+          <SectionHeader title="Smells like this" />
+          <LockedCard
+            testID="detail-discovery-locked"
+            title="What else on your shelf is close to this one"
+            body="And which of them layer well with it. Worked out from your own notes — nothing leaves your device."
+            onPress={() => {
+              analytics().capture('free_cap_hit', { cap: 'discovery' });
+              router.push({ pathname: '/paywall', params: { source: 'bottle-discovery' } });
+            }}
+          />
         </>
       ) : null}
 
@@ -436,6 +541,6 @@ const styles = StyleSheet.create({
   adjustBlock: { marginTop: space.xl },
   adjustActions: { flexDirection: 'row', gap: space.sm },
   fill: { flex: 1 },
-  lockedCard: { borderWidth: 1 },
-  lockedBody: { marginTop: 4 },
+  relatedRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.lg },
+  relatedSwatch: { width: 5, height: 36, borderRadius: 3 },
 });
