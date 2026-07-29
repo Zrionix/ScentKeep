@@ -28,7 +28,24 @@ const STORAGE_KEY = 'scentkeep-store-v1';
 // Mirrors src/domain/fixtures.ts. Kept as literal JSON here because this script
 // runs in plain Node with no TS transform and no access to the app's modules.
 const DAY = 86400000;
-const iso = (offset) => new Date(Date.now() - offset * DAY).toISOString().slice(0, 10);
+
+/**
+ * A LOCAL calendar date, `YYYY-MM-DD`.
+ *
+ * Not `toISOString().slice(0, 10)`, which is UTC. The app dates every diary
+ * entry in the user's own zone (see src/lib/dates.ts — the whole module exists
+ * for this), so a UTC-dated seed is a day ahead of "today" anywhere west of
+ * Greenwich. That silently pushed the seeded streak off by one and made the
+ * most recent entry read as a future date.
+ */
+const iso = (offset) => {
+  const d = new Date(Date.now() - offset * DAY);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+    d.getDate(),
+  ).padStart(2, '0')}`;
+};
+
+/** A timestamp, which genuinely is an instant and so genuinely is UTC. */
 const stamp = (offset) => new Date(Date.now() - offset * DAY).toISOString();
 
 // name, house, family, ml, price, seasons, occasions, longevity, sillage, rating,
@@ -178,6 +195,9 @@ function buildState() {
 // --- capture targets ---------------------------------------------------------
 const SHOTS = [
   { name: '01-wardrobe', route: '/', wait: 2600 },
+  // The wardrobe again, before today has been logged, so the daily pick is on
+  // screen. It leads the store listing — it is the reason to open the app.
+  { name: '01b-today', route: '/', wait: 2600, unloggedToday: true },
   { name: '02-diary', route: '/diary', wait: 2200 },
   { name: '03-insights', route: '/stats', wait: 2200 },
   { name: '04-log-sotd', route: '/log-sotd', wait: 2200 },
@@ -215,6 +235,14 @@ async function main() {
 
       const state = buildState();
       if (shot.premium === false) state.state.isPremium = false;
+      // The daily pick only appears before anything is logged today, which is
+      // correct behaviour and exactly why the demo seed hides it — the seed
+      // logs an unbroken streak up to and including today. Dropping today's
+      // entry shows the feature without faking anything else about the diary.
+      if (shot.unloggedToday) {
+        const today = iso(0);
+        state.state.sotd = state.state.sotd.filter((e) => e.date !== today);
+      }
       const payload = shot.fresh ? null : JSON.stringify(state);
 
       // Seed BEFORE the app's first paint: land on the origin, write

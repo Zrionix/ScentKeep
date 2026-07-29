@@ -175,14 +175,26 @@ node scripts/screenshots.js --store
 Output: `store/screenshots/*.png` at **1320×2868** — App Store Connect's 6.9"
 iPhone requirement, which also satisfies the 6.5" slot and Play's minimums.
 
+Only the first three appear on the App Store install sheet, so the order is
+load-bearing: the reason to open the app daily comes first, the collection
+second, the payoff third.
+
 | Order | File | What it sells |
 |---|---|---|
-| 1 | `01-wardrobe.png` | The signature screen: the collection as a shelf |
-| 2 | `02-diary.png` | The daily loop, with streaks and the activity grid |
+| 1 | `01b-today.png` | The reason to open it: today's pick, explaining itself |
+| 2 | `01-wardrobe.png` | The signature screen: the collection as a shelf |
 | 3 | `03-insights.png` | The paid hook: value, most-worn, cost per wear |
-| 4 | `04-log-sotd.png` | How little effort a daily log takes |
+| 4 | `02-diary.png` | The daily loop, with streaks and the activity grid |
 | 5 | `05-bottle.png` | The depth behind a single bottle |
-| 6 | `06-paywall.png` | Honest, itemised Premium |
+| 6 | `09-share.png` | The card people post, with no prices on it |
+| 7 | `04-log-sotd.png` | How little effort a daily log takes |
+| 8 | `06-paywall.png` | Honest, itemised Premium |
+
+`01b-today` is the same wardrobe screen as `01`, seeded with today not yet
+logged — which is the only state the daily pick appears in. The seeder dates
+diary entries in the **local** zone, matching what the app writes; using
+`toISOString()` there puts every entry a day ahead west of Greenwich and the
+pick never shows.
 
 Captions are burned in by the store listing, not the image — Apple prefers
 screenshots that read without them.
