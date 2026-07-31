@@ -28,9 +28,19 @@ status for 27 EU countries. `support@scentkeep.com → nathan@zrionix.dev` is li
    want *external* TestFlight testers — internal testers can install right now
    without it. Remember the App Store submission is **four items in one draft**:
    the version, both subscriptions, and the subscription group.
-2. **Decide on Apple Vision Pro.** It is ticked by Apple's default on Pricing and
-   Availability. The app is iPhone-only and has never run on visionOS; I would
-   untick it rather than let compatibility-mode users be the ones who review it.
+2. **Untick Apple Vision Pro — I tried and could not.** Pricing and Availability →
+   *iPhone and iPad Apps on Apple Vision Pro* → clear **Make this app available
+   on Apple Vision Pro** → **Save**. It is still ticked: clicking the checkbox
+   returned "An error has occurred. Try again later." and the session dropped
+   before Save, so nothing was written.
+
+   There is no API for it. Neither `/v1/apps/{id}` nor the version resource
+   carries a Vision Pro or Apple-silicon-Mac field, so this cannot be scripted
+   the way the rest of the listing was.
+
+   While you are there: **Apple Silicon Mac availability is also ticked**, same
+   default, same argument. An iPhone-only app that has never been run on either
+   platform should not have compatibility-mode users writing its first reviews.
 3. **Do one sandbox purchase on TestFlight.** The native StoreKit sheet appearing
    is the only proof the production RevenueCat key made it into the binary.
    Silent premium, or a "test store" sheet, means the key is missing.
