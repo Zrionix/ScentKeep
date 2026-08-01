@@ -8,6 +8,38 @@ Connect's web UI lies about state more often than it should.
 
 ---
 
+## ⚠ READ THIS BEFORE PRESSING SUBMIT
+
+**The first submission is FOUR things in ONE draft:** the app version, *both*
+subscriptions, and *the subscription group*. The group has its **own** "Add for
+Review" button, on the group page rather than the version page.
+
+This already went wrong once. Version 1.0 was submitted, App Store Connect
+reported success, and it *was* a success — the submission simply contained one
+item and left all three products behind at `READY_TO_SUBMIT`. Every product page
+said "ready". A listing audit said "nothing is blocking submission". Both were
+true and both were misleading, because completeness of the parts is not
+completeness of the whole.
+
+`READY_TO_SUBMIT` means ready **to** submit. It does not mean submitted.
+
+So, every time, before *and* after pressing the button:
+
+```bash
+npm run check:submission
+```
+
+It exits non-zero if any product is not travelling with the submission, and
+prints which. Do not trust the confirmation screen instead — the one that
+misled us looked exactly like a success, because it was one.
+
+**It cannot be repaired by API afterwards.** `reviewSubmissionItems` has no
+`subscription` relationship (verified: 409, "not a relationship on the
+resource"). The only fix is to cancel, re-add everything in the UI, and submit
+again.
+
+---
+
 ## The short version, as of build 7
 
 **Nothing is blocking submission.** Verified by API rather than by a UI banner:

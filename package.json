@@ -20,6 +20,7 @@
     "screenshots:store": "node scripts/screenshots.js --store",
     "check:aso": "node scripts/check-aso.js",
     "check:links": "node scripts/check-links.js",
+    "check:submission": "node scripts/check-submission.js",
     "ship-check": "npm run type-check && npm run lint && npm run test:ci && npm run check:aso"
   },
   "dependencies": {
