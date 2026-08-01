@@ -26,6 +26,21 @@ const LOCALE = 'en-US';
 const SCREENSHOT_DIR = path.join(__dirname, '..', 'store', 'screenshots');
 const ASO = path.join(__dirname, '..', 'store', 'aso-metadata.md');
 
+/**
+ * Version states whose metadata can still be edited.
+ *
+ * DEVELOPER_REJECTED belongs here and is easy to miss: it means the DEVELOPER
+ * withdrew the submission, not that Apple rejected anything, and the version is
+ * every bit as editable as a fresh one.
+ */
+const EDITABLE_STATES = new Set([
+  'PREPARE_FOR_SUBMISSION',
+  'DEVELOPER_REJECTED',
+  'REJECTED',
+  'METADATA_REJECTED',
+  'INVALID_BINARY',
+]);
+
 const COPYRIGHT = `${new Date().getFullYear()} Zrionix Technology, Inc`;
 const PRIMARY_CATEGORY = 'LIFESTYLE';
 const SECONDARY_CATEGORY = 'UTILITIES';
@@ -181,12 +196,21 @@ async function main() {
   // --- the version and its localization ------------------------------------
   // No `sort` here: this relationship rejects it outright with "the parameter
   // 'sort' can not be used with this request", unlike most ASC collections.
-  const versions = await api(
-    'GET',
-    `/v1/apps/${APP_ID}/appStoreVersions?filter[appStoreState]=PREPARE_FOR_SUBMISSION&limit=10`,
-  );
-  const version = versions.data?.[0];
-  if (!version) throw new Error('no app version exists — create 1.0 in App Store Connect first');
+  //
+  // And no `filter[appStoreState]` either. Filtering on PREPARE_FOR_SUBMISSION
+  // looked right until a submission was withdrawn: the version moved to
+  // DEVELOPER_REJECTED, the filter matched nothing, and this script died
+  // claiming "no app version exists" about a version that was fully populated
+  // and sitting right there. A filter that turns a state change into a missing
+  // resource is worse than no filter.
+  const versions = await api('GET', `/v1/apps/${APP_ID}/appStoreVersions?limit=20`);
+  const version = (versions.data ?? []).find((v) => EDITABLE_STATES.has(v.attributes.appStoreState));
+  if (!version) {
+    const seen = (versions.data ?? []).map((v) => `${v.attributes.versionString}=${v.attributes.appStoreState}`);
+    throw new Error(
+      `no editable app version. Versions on this app: ${seen.join(', ') || 'none'}`,
+    );
+  }
   log(`Version ${version.attributes.versionString} (${version.attributes.appStoreState})\n`);
 
   await patchIfChanged('version attributes', 'appStoreVersions', version.id, version.attributes, {

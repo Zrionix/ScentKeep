@@ -40,16 +40,55 @@ const warn = (m) => {
  * that got us here: it means ready TO submit, not submitted.
  */
 const LEFT_BEHIND = new Set(['READY_TO_SUBMIT', 'MISSING_METADATA', 'DEVELOPER_ACTION_NEEDED']);
+
+/**
+ * The group version's own vocabulary. It says PREPARE_FOR_SUBMISSION where a
+ * product says READY_TO_SUBMIT, so this deliberately does NOT share the set
+ * above — a subscription VERSION also sits at PREPARE_FOR_SUBMISSION perfectly
+ * legitimately while its product rollup reads READY_TO_SUBMIT, and conflating
+ * the two levels produces confident nonsense.
+ */
+const GROUP_LEFT_BEHIND = new Set(['PREPARE_FOR_SUBMISSION', 'DEVELOPER_ACTION_NEEDED', 'REJECTED']);
+
 const IN_FLIGHT = new Set(['WAITING_FOR_REVIEW', 'IN_REVIEW', 'PENDING_DEVELOPER_RELEASE']);
 const DONE = new Set(['APPROVED', 'DEVELOPER_REMOVED_FROM_SALE', 'READY_FOR_SALE']);
 
-async function products() {
+/**
+ * Everything that has to travel with the version, INCLUDING the subscription
+ * group.
+ *
+ * The group was missing from the first version of this script — the check
+ * written specifically to catch the four-items trap checked three of the four
+ * items. It would have gone green the moment the products moved and the group
+ * did not, which is the exact shape of the bug it exists to prevent.
+ *
+ * The group's readiness lives on its VERSION, not on the group itself:
+ * `/v1/subscriptionGroups/{id}` returns only a reference name. Note also that
+ * group versions and product rollups use different vocabularies for the same
+ * idea — a group version sits at PREPARE_FOR_SUBMISSION while a ready product
+ * reads READY_TO_SUBMIT — so they cannot share one state table.
+ */
+async function items() {
   const subs = (await api('GET', `/v1/subscriptionGroups/${SUBSCRIPTION_GROUP}/subscriptions`)).data ?? [];
   const iaps = (await api('GET', `/v1/apps/${APP_ID}/inAppPurchasesV2`)).data ?? [];
+  const groupVersions = (await api('GET', `/v1/subscriptionGroups/${SUBSCRIPTION_GROUP}/versions`)).data ?? [];
+
   return [
     ...subs.map((s) => ({ kind: 'subscription', id: s.id, ...s.attributes })),
     ...iaps.map((i) => ({ kind: 'non-consumable', id: i.id, ...i.attributes })),
+    ...groupVersions.slice(0, 1).map((g) => ({
+      kind: 'subscription group',
+      id: g.id,
+      productId: `subscription group ${SUBSCRIPTION_GROUP}`,
+      state: g.attributes.state,
+      isGroup: true,
+    })),
   ];
+}
+
+/** True when this row is ready but not travelling with a submission. */
+function leftBehind(row) {
+  return row.isGroup ? GROUP_LEFT_BEHIND.has(row.state) : LEFT_BEHIND.has(row.state);
 }
 
 async function main() {
@@ -76,12 +115,12 @@ async function main() {
     bad('no build attached to the version — submission will be refused');
   }
 
-  // --- the products ---------------------------------------------------------
-  const all = await products();
+  // --- the products, and the group ------------------------------------------
+  const all = await items();
   console.log('');
   for (const p of all) {
     const label = `${p.productId} (${p.kind})`;
-    if (LEFT_BEHIND.has(p.state)) bad(`${label} is ${p.state} — NOT in any submission`);
+    if (leftBehind(p)) bad(`${label} is ${p.state} — NOT in any submission`);
     else if (IN_FLIGHT.has(p.state)) ok(`${label} is ${p.state}`);
     else if (DONE.has(p.state)) ok(`${label} is ${p.state}`);
     else warn(`${label} is ${p.state} — unrecognised, check it by hand`);
@@ -97,24 +136,34 @@ async function main() {
   }
 
   for (const s of live) {
-    const items = (await api('GET', `/v1/reviewSubmissions/${s.id}/items?limit=50`)).data ?? [];
-    console.log(`  submission ${s.id.slice(0, 8)} — ${s.attributes.state}, ${items.length} item(s)`);
+    const submitted = (await api("GET", `/v1/reviewSubmissions/${s.id}/items?limit=50`)).data ?? [];
+    console.log(`  submission ${s.id.slice(0, 8)} — ${s.attributes.state}, ${submitted.length} item(s)`);
 
     // THE CHECK THIS SCRIPT EXISTS FOR. One item means the version went alone.
-    const leftBehind = all.filter((p) => LEFT_BEHIND.has(p.state));
-    if (leftBehind.length > 0) {
+    const behind = all.filter(leftBehind);
+    const expected = all.length + 1; // every product and the group, plus the version
+
+    if (behind.length > 0) {
       bad(
-        `submission carries ${items.length} item(s) but ${leftBehind.length} product(s) are still behind: ` +
-          leftBehind.map((p) => p.productId).join(', '),
+        `submission carries ${submitted.length} item(s) but ${behind.length} are still behind: ` +
+          behind.map((p) => p.productId).join(', '),
       );
-      console.log('           The first submission must include the app version, EVERY subscription,');
-      console.log('           AND the subscription group — the group has its own Add for Review button.');
-      console.log('           reviewSubmissionItems has no `subscription` relationship, so this cannot');
-      console.log('           be repaired by API: cancel, re-add all of it in the UI, submit again.');
-    } else if (items.length < 2 && all.length > 0) {
-      warn(`only ${items.length} item(s) in the submission — expected the version plus the products`);
+      console.log('           The first submission is the app version, EVERY subscription, the');
+      console.log('           non-consumable, AND the subscription group — the group has its own');
+      console.log('           "Add for Review" button on the group page, not the version page.');
+      console.log('           Repairable by API while the submission is still READY_FOR_REVIEW:');
+      console.log('           POST /v1/reviewSubmissionItems using the VERSION relationships');
+      console.log('           (subscriptionVersion / subscriptionGroupVersion / inAppPurchaseVersion).');
+      console.log('           The product-level `subscription` relationship does not exist.');
+    } else if (submitted.length < expected) {
+      // Not a warning. Everything reading ready while the submission is short is
+      // precisely the state that shipped a one-item submission last time.
+      bad(
+        `submission carries ${submitted.length} item(s), expected ${expected} ` +
+          `(the version plus ${all.length} product/group items)`,
+      );
     } else {
-      ok(`submission carries ${items.length} items and no product is left behind`);
+      ok(`submission carries ${submitted.length} items and nothing is left behind`);
     }
   }
 

@@ -33,10 +33,27 @@ It exits non-zero if any product is not travelling with the submission, and
 prints which. Do not trust the confirmation screen instead — the one that
 misled us looked exactly like a success, because it was one.
 
-**It cannot be repaired by API afterwards.** `reviewSubmissionItems` has no
-`subscription` relationship (verified: 409, "not a relationship on the
-resource"). The only fix is to cancel, re-add everything in the UI, and submit
-again.
+**Correction to what this file said earlier:** it claimed a mis-shaped submission
+could not be repaired by API. That was wrong, and the error came from testing one
+relationship name and generalising.
+
+`reviewSubmissionItems` has no **`subscription`** relationship — that is the
+product-level id, and it 409s with "not a relationship on the resource". But the
+**version**-level names are all accepted:
+
+| Relationship | Verdict |
+|---|---|
+| `subscription` (product id) | ✗ name rejected |
+| `subscriptionVersion` | ✓ accepted |
+| `subscriptionGroupVersion` | ✓ accepted |
+| `inAppPurchaseVersion` | ✓ accepted |
+
+Probed live: the three version relationships failed only with "reviewSubmission
+state does not allow adding", i.e. because that submission was already closed —
+not because the name was unknown.
+
+So while a submission is still `READY_FOR_REVIEW`, items **can** be added by API.
+Cancelling and redoing it all in the UI is the fallback, not the only route.
 
 ---
 
