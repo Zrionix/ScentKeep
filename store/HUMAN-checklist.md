@@ -281,7 +281,23 @@ the paid tier), but it means no one can buy anything.
       > 30-day trial is 175 rows, which is exactly what the UI's country picker
       > creates behind the scenes.
 
-- [ ] **Wire the RevenueCat webhook.**
+- [ ] **Wire the RevenueCat webhook — OPTIONAL for 1.0, and this file used to
+      imply otherwise.** Traced it: nothing in the app queries the
+      `subscriptions` table. The only code touching it is the webhook itself.
+      Entitlement truth reaches the app from RevenueCat's `customerInfo`
+      (`purchases.isPremium()` -> `bootstrap.ts`), and cloud sync gates on that
+      same in-app boolean, not on the table.
+
+      So an unwired webhook means the server has no record of who subscribed. It
+      does NOT mean purchases fail or premium fails to unlock. Worth doing before
+      you care about server-side revenue truth, refund handling or churn
+      analysis; not worth delaying submission for.
+
+      Both Edge Functions are deployed and **ACTIVE**, with the right JWT
+      settings: `revenuecat-webhook` has `verify_jwt: false` (RevenueCat cannot
+      present a Supabase JWT), `delete-account` has `verify_jwt: true`.
+
+      When you do wire it:
       - URL: `https://iqpknjohrjieepvzgqoz.supabase.co/functions/v1/revenuecat-webhook`
       - Set an Authorization header value, then store the same value as a
         Supabase Edge Function secret named `REVENUECAT_WEBHOOK_SECRET`.
