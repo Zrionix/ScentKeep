@@ -191,6 +191,30 @@ Without these the app runs the purchases **stub**, which refuses to grant
 premium in a release build. That's deliberate (a missing key must never hand out
 the paid tier), but it means no one can buy anything.
 
+- [x] ~~Configure RevenueCat~~ — **done, but it was NOT done before.** This file
+      previously claimed the project had "entitlement id `premium` (matches the
+      code), default offering Monthly / Yearly / Lifetime". None of that existed.
+      The dashboard held zero products, zero offerings and zero entitlements —
+      only the app record and the SDK key were real.
+
+      With no offering, `offerings.current` is null, `getPackages()` returns `[]`
+      and the paywall renders *"Plans are unavailable right now. Check your
+      connection and try again."* The review notes walk the reviewer straight to
+      that screen. It would have been a 2.1 rejection.
+
+      Now actually in place and verified in the dashboard:
+
+      | | |
+      |---|---|
+      | Entitlement | `premium` — exact string match for `ENTITLEMENT` |
+      | Products | all 3, each attached to `premium` |
+      | Offering | `default`, marked current, **3 packages** |
+      | Packages | `$rc_monthly` `$rc_annual` `$rc_lifetime`, each with its product |
+
+      Products had to be created by identifier: RevenueCat's importer said "no
+      new products available to import" because unapproved App Store Connect
+      products are not exposed to it.
+
 - [x] ~~Create a RevenueCat project~~ — **done.** Project `ScentKeep`
       (id `0770dfee`), entitlement id **`premium`** (matches the code), default
       offering Monthly / Yearly / Lifetime. The Test Store key is wired into the
