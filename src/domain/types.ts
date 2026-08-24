@@ -122,6 +122,19 @@ export interface Settings {
   /** Local time of the daily SOTD nudge, `HH:mm` 24h. */
   reminderTime: string;
   rediscoverEnabled: boolean;
+  /**
+   * When we last offered to turn on the daily reminder, or null if never.
+   *
+   * Exists so the offer is made ONCE. iOS only shows its permission sheet once
+   * per install, so a second ask is either a no-op or nagging — and nagging for
+   * notifications is a well-earned uninstall.
+   *
+   * Deliberately NOT synced (sync.ts maps settings columns explicitly and this
+   * is not among them). It describes THIS install's permission state, and a new
+   * phone has never been asked — syncing it would suppress the ask on the one
+   * device where it still has something to gain.
+   */
+  reminderPromptedAt: string | null;
   themePreference: 'system' | 'dark' | 'light';
   currency: string;
   /** Onboarding answers, kept for personalisation. */
@@ -131,9 +144,26 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  reminderEnabled: true,
+  /**
+   * OFF on a fresh install, and this is load-bearing.
+   *
+   * It used to default true, which meant bootstrap() called syncReminders() on
+   * the very first launch, which called requestPermission(), which put the iOS
+   * system alert on screen ON TOP of the welcome screen — before the user had
+   * added a single bottle or had any reason to want a reminder.
+   *
+   * iOS shows that alert ONCE PER INSTALL. A user who taps "Don't Allow" can
+   * never be asked again: requestPermission() sees 'denied' and returns early
+   * forever. Spending the one prompt a habit app gets, unprimed, in the first
+   * three seconds, is the worst possible use of it.
+   *
+   * The ask now happens after the first Scent of the Day is logged — the moment
+   * the user has demonstrated the exact habit the reminder reinforces.
+   */
+  reminderEnabled: false,
   reminderTime: '09:00',
   rediscoverEnabled: true,
+  reminderPromptedAt: null,
   themePreference: 'system',
   currency: 'USD',
   favoriteFamilies: [],
@@ -173,6 +203,18 @@ export function emptyDraft(overrides: Partial<FragranceDraft> = {}): FragranceDr
     remainingMlAt: null,
     ...overrides,
   };
+}
+
+/**
+ * Fills in settings fields added after a user's data was first written.
+ *
+ * The fragrance equivalent (`withDefaults`) has existed since the collector
+ * fields landed; settings had no such guard, so `reminderPromptedAt` would have
+ * rehydrated as `undefined` for every existing user and the "have we asked yet"
+ * check would have read as a falsy never-asked forever.
+ */
+export function settingsWithDefaults(s: Partial<Settings> | undefined): Settings {
+  return { ...DEFAULT_SETTINGS, ...(s ?? {}) };
 }
 
 /**

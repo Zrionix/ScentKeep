@@ -43,11 +43,15 @@ export default function SettingsScreen() {
   const [busy, setBusy] = useState(false);
 
   const setReminderEnabled = async (enabled: boolean) => {
-    updateSettings({ reminderEnabled: enabled });
+    // Touching this switch IS an answer to "do you want reminders", so the
+    // primed ask after the first log must not go on to ask it again. Recorded
+    // in both directions — someone who turned it off has answered just as
+    // clearly as someone who turned it on.
+    updateSettings({ reminderEnabled: enabled, reminderPromptedAt: new Date().toISOString() });
     const ok = await syncReminders({ ...settings, reminderEnabled: enabled });
     if (enabled && !ok) {
       // Reflect reality: if the OS refused, the toggle must not claim it is on.
-      updateSettings({ reminderEnabled: false });
+      updateSettings({ reminderEnabled: false, reminderPromptedAt: new Date().toISOString() });
       Alert.alert(
         'Notifications are off',
         'ScentKeep needs notification permission to remind you. You can turn it on in your device Settings.',

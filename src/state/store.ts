@@ -7,6 +7,7 @@ import { alreadyLogged } from '@/domain/sotd';
 import { ownedBottles, wishlistBottles } from '@/domain/stats';
 import {
   DEFAULT_SETTINGS,
+  settingsWithDefaults,
   withDefaults,
   type Fragrance,
   type FragranceDraft,
@@ -373,6 +374,11 @@ export const useStore = create<AppState>()(
         // `undefined` for `type`, `spraysPerWear` and friends, and every screen
         // that reads them renders wrong or crashes.
         state.fragrances = state.fragrances.map((f) => withDefaults(f));
+        // Settings need the same treatment and did not have it. A field added
+        // to Settings rehydrates as `undefined` for everyone who installed
+        // before it existed, and a falsy check on that reads as "not set yet"
+        // forever.
+        state.settings = settingsWithDefaults(state.settings);
         state.setHydrated(true);
       },
     },

@@ -14,6 +14,7 @@ import { ownedBottles } from '@/domain/stats';
 import { pickForToday } from '@/domain/suggest';
 import { analytics } from '@/lib/analytics';
 import { goBack } from '@/lib/nav';
+import { syncReminders } from '@/lib/notifications';
 import { todayIso } from '@/lib/dates';
 import { useStore } from '@/state/store';
 import { colorForFamily, OCCASIONS, radius, space, type as typeScale } from '@/theme';
@@ -38,6 +39,8 @@ export default function LogSotdScreen() {
   const fragrances = useStore((s) => s.fragrances);
   const sotd = useStore((s) => s.sotd);
   const logSotd = useStore((s) => s.logSotd);
+  const settings = useStore((s) => s.settings);
+  const updateSettings = useStore((s) => s.updateSettings);
 
   const owned = useMemo(() => ownedBottles(fragrances), [fragrances]);
   const today = todayIso();
@@ -50,6 +53,7 @@ export default function LogSotdScreen() {
   const [note, setNote] = useState('');
   const [rating, setRating] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [askReminder, setAskReminder] = useState(false);
 
   // The same recommender the home screen uses, rather than a second, weaker one
   // that could disagree with it on the same morning.
@@ -96,8 +100,79 @@ export default function LogSotdScreen() {
       streak: currentStreak(useStore.getState().sotd),
       from: (params.from as 'home' | 'diary' | 'bottle' | 'reminder') ?? 'home',
     });
+
+    // The reminder ask lives HERE and nowhere else.
+    //
+    // iOS shows its permission sheet once per install, so there is exactly one
+    // chance to get a yes. This is the moment it is worth spending: the user has
+    // just logged a scent, which is precisely the habit a daily nudge
+    // reinforces. Asking on first launch — which is what the old
+    // `reminderEnabled: true` default did — spent that one chance on someone who
+    // had not yet seen a bottle.
+    //
+    // Offered once ever, tracked by reminderPromptedAt, because a second ask is
+    // either a no-op or nagging.
+    if (!settings.reminderEnabled && settings.reminderPromptedAt === null) {
+      setAskReminder(true);
+      return;
+    }
+
     goBack(router);
   };
+
+  /** Records that the offer was made, whichever way it was answered, so it is
+   *  never made again. */
+  const answerReminder = async (wants: boolean) => {
+    const askedAt = new Date().toISOString();
+    if (!wants) {
+      updateSettings({ reminderPromptedAt: askedAt });
+      goBack(router);
+      return;
+    }
+    const scheduled = await syncReminders({ ...settings, reminderEnabled: true });
+    // Only claim it is on if the OS actually agreed. A denial at the system
+    // sheet must leave the switch OFF, or Settings shows a reminder that will
+    // never arrive — the exact lie the old startup path told.
+    updateSettings({ reminderEnabled: scheduled, reminderPromptedAt: askedAt });
+    if (scheduled) {
+      analytics().capture('reminder_scheduled', { time: settings.reminderTime });
+    }
+    goBack(router);
+  };
+
+  // Shown after the log is already saved, so dismissing it loses nothing.
+  if (askReminder) {
+    return (
+      <Screen testID="sotd-reminder-ask">
+        <PageHeader eyebrow="Logged" title="Want a nudge tomorrow?" />
+        <Card flat style={styles.askCard}>
+          <Text variant="body">
+            A quiet reminder at {settings.reminderTime} to log what you are wearing. No streaks to
+            lose, no badges — just the nudge.
+          </Text>
+          <Text variant="caption" tone="tertiary" style={styles.askNote}>
+            You can change the time or turn this off in Settings at any point.
+          </Text>
+        </Card>
+        <View style={styles.actions}>
+          <Button
+            testID="reminder-yes"
+            label="Yes, remind me"
+            onPress={() => { answerReminder(true); }}
+            size="lg"
+            fullWidth
+          />
+          <Button
+            testID="reminder-no"
+            label="Not now"
+            variant="ghost"
+            onPress={() => { answerReminder(false); }}
+            style={styles.cancel}
+          />
+        </View>
+      </Screen>
+    );
+  }
 
   if (owned.length === 0) {
     return (
@@ -304,6 +379,8 @@ const styles = StyleSheet.create({
   facetLabel: { marginTop: space.lg, marginBottom: space.sm },
   ratingWrap: { marginTop: space.xl, marginBottom: space.lg },
   error: { marginTop: space.lg },
+  askCard: { marginBottom: space.lg },
+  askNote: { marginTop: space.md },
   actions: { marginTop: space.xxl },
   cancel: { marginTop: space.sm },
 });

@@ -91,8 +91,19 @@ async function run(): Promise<BootstrapResult> {
 
   // 4. Reminders match stored settings on every launch, so a reinstall or an OS
   //    permission change can't leave the schedule out of step with the toggle.
+  //
+  //    The RESULT is written back, which it previously was not. syncReminders
+  //    returns false when the OS refuses, and throwing that away left
+  //    `reminderEnabled` true with nothing actually scheduled — so Settings
+  //    rendered the switch ON, captioned "A gentle nudge at 9:00 AM", for a user
+  //    who would never receive one. The manual toggle in settings.tsx already
+  //    handled this correctly; only the startup path lied.
   try {
-    await syncReminders(useStore.getState().settings);
+    const settings = useStore.getState().settings;
+    if (settings.reminderEnabled) {
+      const scheduled = await syncReminders(settings);
+      if (!scheduled) useStore.getState().updateSettings({ reminderEnabled: false });
+    }
   } catch {
     /* reminders are best-effort */
   }

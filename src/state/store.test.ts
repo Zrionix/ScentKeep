@@ -1,5 +1,5 @@
 import { FREE_LIMITS } from '@/domain/entitlements';
-import { emptyDraft } from '@/domain/types';
+import { DEFAULT_SETTINGS, emptyDraft } from '@/domain/types';
 import { useStore } from './store';
 
 const reset = () =>
@@ -248,7 +248,12 @@ describe('settings + onboarding', () => {
     useStore.getState().updateSettings({ reminderTime: '07:15' });
     const s = useStore.getState().settings;
     expect(s.reminderTime).toBe('07:15');
-    expect(s.reminderEnabled).toBe(true); // untouched default
+    // Compared against DEFAULT_SETTINGS rather than a literal. This line used to
+    // read `toBe(true)` and broke the day the reminder default flipped to false
+    // — which tested the default, not the thing the test is named after.
+    expect(s.reminderEnabled).toBe(DEFAULT_SETTINGS.reminderEnabled);
+    expect(s.rediscoverEnabled).toBe(DEFAULT_SETTINGS.rediscoverEnabled);
+    expect(s.currency).toBe(DEFAULT_SETTINGS.currency);
   });
 
   it('records onboarding answers and stamps completion', () => {
