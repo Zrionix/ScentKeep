@@ -23,7 +23,8 @@
     "check:submission": "node scripts/check-submission.js",
     "check:site": "node scripts/check-site.js",
     "submission:assemble": "node scripts/assemble-submission.js",
-    "ship-check": "npm run type-check && npm run lint && npm run test:ci && npm run check:aso && npm run check:site"
+    "ship-check": "npm run type-check && npm run lint && npm run test:ci && npm run check:aso && npm run check:site",
+    "social": "python -m http.server 8099 --directory tools/social"
   },
   "dependencies": {
     "@expo-google-fonts/cormorant-garamond": "^0.4.1",
