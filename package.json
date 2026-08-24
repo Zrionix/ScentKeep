@@ -21,8 +21,9 @@
     "check:aso": "node scripts/check-aso.js",
     "check:links": "node scripts/check-links.js",
     "check:submission": "node scripts/check-submission.js",
+    "check:site": "node scripts/check-site.js",
     "submission:assemble": "node scripts/assemble-submission.js",
-    "ship-check": "npm run type-check && npm run lint && npm run test:ci && npm run check:aso"
+    "ship-check": "npm run type-check && npm run lint && npm run test:ci && npm run check:aso && npm run check:site"
   },
   "dependencies": {
     "@expo-google-fonts/cormorant-garamond": "^0.4.1",

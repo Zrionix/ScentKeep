@@ -162,3 +162,28 @@ code {
   font-size: 13px;
   color: var(--ink);
 }
+
+/* --- App Store call to action ---------------------------------------------
+   Written when 1.0 went live. The download link is the one thing on this page
+   that has a job, so it gets the accent as a solid fill rather than the quiet
+   outline everything else uses. */
+.cta { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin: 28px 0 8px; }
+
+.appstore {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--accent);
+  color: #17130a;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 15px;
+  padding: 12px 20px;
+  border-radius: 999px;
+  border: 1px solid var(--accent);
+}
+.appstore:hover { filter: brightness(1.06); }
+.appstore svg { flex: none; }
+
+/* Touch targets stay comfortable when the pill wraps under the button. */
+.cta .pill { padding: 8px 14px; }
