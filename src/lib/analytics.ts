@@ -51,7 +51,7 @@ export interface EventMap {
   /** The daily pick was taken. The ratio of this to `sotd_logged` is how we
    *  learn whether the suggester is any good — a suggestion nobody accepts is a
    *  suggestion that should be removed, not tuned forever. */
-  suggestion_accepted: { source: 'home' | 'log' };
+  suggestion_accepted: { source: 'home' | 'log' | 'rediscover' };
 
   stats_viewed: { collection_size: number; is_premium: boolean };
   reminder_scheduled: { time: string };

@@ -50,3 +50,7 @@ yarn-error.*
 # test + screenshot artifacts
 /coverage
 /artifacts
+
+# Local IG source videos
+marketing/**/*.mp4
+

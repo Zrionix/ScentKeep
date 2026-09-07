@@ -53,7 +53,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Wardrobe',
+          title: 'Today',
           tabBarIcon: ({ focused }) => <TabGlyph glyph={GLYPH.wardrobe} focused={focused} />,
         }}
       />
