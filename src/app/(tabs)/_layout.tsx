@@ -2,7 +2,7 @@ import { Redirect, Tabs } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Platform, StyleSheet } from 'react-native';
 import { Text } from '@/components/ui/Text';
-import { hasSeenPaywall } from '@/lib/growth';
+import { hasSeenPaywall, markPaywallSeen } from '@/lib/growth';
 import { selectNeedsOnboarding, useStore } from '@/state/store';
 import { space } from '@/theme';
 import { useTheme } from '@/theme/ThemeProvider';
@@ -35,7 +35,10 @@ export default function TabsLayout() {
 
   if (!hydrated || paywallSeen === null) return null;
   if (needsOnboarding) return <Redirect href="/onboarding" />;
-  if (!isPremium && !paywallSeen) return <Redirect href="/paywall?source=first-open" />;
+  if (!isPremium && !paywallSeen) {
+    void markPaywallSeen();
+    return <Redirect href="/paywall?source=first-open" />;
+  }
 
   return (
     <Tabs
