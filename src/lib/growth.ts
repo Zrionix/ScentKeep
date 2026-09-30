@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as StoreReview from 'expo-store-review';
+import { useEffect } from 'react';
 
 const PAYWALL = 'growth.paywallSeen';
 const FIRST = 'growth.firstOpenAt';
@@ -20,6 +21,12 @@ export async function noteAppOpen(): Promise<number> {
   const n = Number((await AsyncStorage.getItem(OPENS)) ?? '0') + 1;
   await AsyncStorage.setItem(OPENS, String(n));
   return n;
+}
+
+export function useMarkPaywallSeenOnMount(): void {
+  useEffect(() => {
+    markPaywallSeen().catch(() => {});
+  }, []);
 }
 
 /** Apple/Google own the dialog. We ask once, after 3 days and 4 opens, never on first launch. */
