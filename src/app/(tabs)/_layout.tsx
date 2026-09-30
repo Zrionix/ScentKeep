@@ -1,17 +1,16 @@
 import { Redirect, Tabs } from 'expo-router';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Platform, StyleSheet } from 'react-native';
 import { Text } from '@/components/ui/Text';
+import { hasSeenPaywall } from '@/lib/growth';
 import { selectNeedsOnboarding, useStore } from '@/state/store';
 import { space } from '@/theme';
 import { useTheme } from '@/theme/ThemeProvider';
 
-/** Tab glyphs. Text glyphs keep the bundle free of an icon font while still
- *  reading as considered rather than default-blue-icons. */
 const GLYPH = {
   wardrobe: '❖',
   diary: '◈',
-  stats: '◧',
+  stats: '◫',
   settings: '⚙',
 } as const;
 
@@ -27,11 +26,16 @@ export default function TabsLayout() {
   const { colors } = useTheme();
   const needsOnboarding = useStore(selectNeedsOnboarding);
   const hydrated = useStore((s) => s.hydrated);
+  const isPremium = useStore((s) => s.isPremium);
+  const [paywallSeen, setPaywallSeen] = useState<boolean | null>(null);
 
-  // Wait for hydration before deciding — redirecting on un-hydrated state would
-  // bounce a returning user back through onboarding on every cold start.
-  if (!hydrated) return null;
+  useEffect(() => {
+    hasSeenPaywall().then(setPaywallSeen).catch(() => setPaywallSeen(true));
+  }, []);
+
+  if (!hydrated || paywallSeen === null) return null;
   if (needsOnboarding) return <Redirect href="/onboarding" />;
+  if (!isPremium && !paywallSeen) return <Redirect href="/paywall?source=first-open" />;
 
   return (
     <Tabs
