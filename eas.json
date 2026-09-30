@@ -16,6 +16,12 @@
       "distribution": "internal",
       "android": { "buildType": "apk" }
     },
+    "preview-play": {
+      "environment": "preview",
+      "distribution": "store",
+      "autoIncrement": false,
+      "android": { "buildType": "app-bundle" }
+    },
     "production-sim": {
       "extends": "production",
       "distribution": "internal",
